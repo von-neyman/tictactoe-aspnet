@@ -10,16 +10,4 @@
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="Datasource\Model\" />
-    <Folder Include="Datasource\Repository\" />
-    <Folder Include="Datasource\Mapper\" />
-    <Folder Include="Domain\Model\" />
-    <Folder Include="Domain\Service\" />
-    <Folder Include="DI\" />
-    <Folder Include="Web\Model\" />
-    <Folder Include="Web\Controller\" />
-    <Folder Include="Web\Mapper\" />
-  </ItemGroup>
-
 </Project>

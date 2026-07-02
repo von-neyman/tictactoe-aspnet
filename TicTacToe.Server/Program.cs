@@ -1,9 +1,9 @@
 namespace TicTacToe.Server;
 
-    public class Program
+public class Program
+{
+    public static void Main()
     {
-        public static void Main()
-        {
 
-        }
     }
+}

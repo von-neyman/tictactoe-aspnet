@@ -1,42 +1,67 @@
-﻿namespace TicTacToe.Server.Domain.Service;
+﻿namespace TicTacToe.Server.Datasource.Service;
 
+using TicTacToe.Server.Datasource.Mapper;
+using TicTacToe.Server.Datasource.Repository;
 using TicTacToe.Server.Domain.Enum;
 using TicTacToe.Server.Domain.Model;
+using TicTacToe.Server.Domain.Service;
 
 /// <summary>Реализация игровой логики: Минимакс, валидация хода игрока, проверка окончания игры.</summary>
 internal class GameService : IGameService
 {
-    /// <summary>Выполняет ход компьютера алгоритмом Минимакс и возвращает обновлённую игру.</summary>
-    /// <param name="game">Текущая игра с ходом игрока.</param>
-    /// <returns>Игра с ходом компьютера.</returns>
-    public Game MakeComputerMove(Game game)
+    /// <summary>Репозиторий для доступа к хранилищу игр.</summary>
+    private readonly IGameRepository repository;
+
+    /// <summary>Принимает репозиторий через конструктор.</summary>
+    /// <param name="repository">Репозиторий для работы с хранилищем.</param>
+    public GameService(IGameRepository repository)
     {
+        this.repository = repository;
+    }
+
+    /// <summary>Выполняет ход компьютера алгоритмом Минимакс и сохраняет результат в хранилище.</summary>
+    /// <param name="gameId">Идентификатор игры.</param>
+    public void MakeComputerMove(Guid gameId)
+    {
+        var gameEntity = repository.GetById(gameId)!;
+        var game = DatasourceMapper.GameToDomain(gameEntity);
         var bestMove = FindBestMove(game);
         var newField = game.Field.Clone();
         newField.Cells[bestMove.Row][bestMove.Col] = game.ComputerSymbol;
-        return game.UpdateField(newField);
+        var newState = GetGameState(newField);
+        var updatedGame = game.UpdateField(newField, newState);
+        repository.Save(DatasourceMapper.GameToEntity(updatedGame));
     }
 
-    /// <summary>Проверяет, что игрок сделал корректный ход: ровно одна новая клетка, старые не изменены, клетка была пуста.</summary>
-    /// <param name="game">Текущая игра до хода игрока.</param>
-    /// <param name="updatedField">Состояние поля после хода игрока.</param>
-    /// <returns>true, если ход корректен.</returns>
-    public bool ValidatePlayerMove(Game game, GameField updatedField)
+    /// <summary>Проверяет, что игрок сделал корректный ход и сохраняет его, если ход корректен.</summary>
+    /// <param name="gameId">Идентификатор игры.</param>
+    /// <param name="playerField">Состояние поля после хода игрока.</param>
+    /// <returns>true, если ход корректен и сохранён.</returns>
+    public bool ValidatePlayerMove(Guid gameId, GameField playerField)
     {
-        var original = game.Field;
+        var gameEntity = repository.GetById(gameId)!;
+        var game = DatasourceMapper.GameToDomain(gameEntity);
+        var originalField = game.Field;
         var changes = 0;
         for (int i = 0; i < GameField.Size; i++)
         {
             for (int j = 0; j < GameField.Size; j++)
             {
-                var oldCell = original.Cells[i][j];
-                var newCell = updatedField.Cells[i][j];
+                var oldCell = originalField.Cells[i][j];
+                var newCell = playerField.Cells[i][j];
                 if (oldCell == newCell) continue;
                 if (oldCell != CellState.Empty || newCell != game.PlayerSymbol) return false;
                 changes++;
             }
         }
-        return changes == 1;
+        var isValid = changes == 1;
+        if (isValid)
+        {
+            var newState = GetGameState(playerField);
+            var updatedGame = game.UpdateField(playerField, newState);
+            repository.Save(DatasourceMapper.GameToEntity(updatedGame));
+        }
+        return isValid;
     }
 
     /// <summary>Возвращает текущее состояние игры: продолжается, ничья, победа X или победа O.</summary>

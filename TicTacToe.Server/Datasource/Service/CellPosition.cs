@@ -1,4 +1,4 @@
-﻿namespace TicTacToe.Server.Domain.Model;
+﻿namespace TicTacToe.Server.Datasource.Service;
 
 /// <summary>Позиция клетки на игровом поле.</summary>
 internal struct CellPosition

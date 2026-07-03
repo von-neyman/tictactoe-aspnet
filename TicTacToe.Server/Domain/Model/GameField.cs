@@ -22,13 +22,6 @@ public class GameField
         }
     }
 
-    /// <summary>Создаёт игровое поле с заданной матрицей клеток (для десериализации).</summary>
-    /// <param name="cells">Матрица клеток.</param>
-    public GameField(CellState[][] cells)
-    {
-        Cells = cells;
-    }
-
     /// <summary>Создаёт глубокую копию игрового поля.</summary>
     /// <returns>Копия игрового поля с идентичным содержимым.</returns>
     public GameField Clone()

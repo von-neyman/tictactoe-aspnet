@@ -26,11 +26,8 @@ public class Game
     /// </summary>
     public int Difficulty { get; init; } = GameField.Size * GameField.Size;
 
-    /// <summary>Пустой конструктор для десериализации.</summary>
-    public Game()
-    {
-        Field = new GameField();
-    }
+    /// <summary>Текущее состояние игры.</summary>
+    public GameState State { get; init; }
 
     /// <summary>Создаёт новую игру с уникальным идентификатором, пустым полем и выбранными символами.</summary>
     /// <param name="playerSymbol">Символ, выбранный игроком.</param>
@@ -40,17 +37,20 @@ public class Game
         Field = new GameField();
         PlayerSymbol = playerSymbol;
         ComputerSymbol = playerSymbol == CellState.X ? CellState.O : CellState.X;
+        State = GameState.InProgress;
     }
 
-    /// <summary>Создаёт экземпляр игры с новым полем.</summary>
+    /// <summary>Создаёт экземпляр игры с новым полем и указанным состоянием.</summary>
     /// <param name="newField">Новое состояние игрового поля.</param>
-    /// <returns>Новая игра с обновлённым полем.</returns>
-    public Game UpdateField(GameField newField)
+    /// <param name="newState">Новое состояние игры.</param>
+    /// <returns>Новая игра с обновлённым полем и состоянием.</returns>
+    public Game UpdateField(GameField newField, GameState newState)
     {
         return new Game(PlayerSymbol)
         {
             Id = this.Id,
-            Field = newField
+            Field = newField,
+            State = newState
         };
     }
 }

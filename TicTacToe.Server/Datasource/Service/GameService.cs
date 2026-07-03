@@ -40,6 +40,7 @@ internal class GameService : IGameService
     public bool ValidatePlayerMove(Guid gameId, GameField playerField)
     {
         var gameEntity = repository.GetById(gameId)!;
+        if (gameEntity.State != GameState.InProgress) return false;
         var game = DatasourceMapper.GameToDomain(gameEntity);
         var originalField = game.Field;
         var changes = 0;

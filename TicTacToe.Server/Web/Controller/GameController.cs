@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using TicTacToe.Server.Datasource.Mapper;
 using TicTacToe.Server.Datasource.Repository;
 using TicTacToe.Server.Domain.Enum;
+using TicTacToe.Server.Domain.Model;
 using TicTacToe.Server.Domain.Service;
 using TicTacToe.Server.Web.Mapper;
 using TicTacToe.Server.Web.Model;
@@ -21,6 +22,18 @@ public class GameController : ControllerBase
     {
         this.gameService = gameService;
         this.repository = repository;
+    }
+
+    /// <summary>Создаёт новую игру и возвращает её.</summary>
+    /// <param name="playerSymbol">Символ, выбранный игроком (X или O).</param>
+    [HttpPost("new")]
+    public IActionResult NewGame([FromBody] CellState playerSymbol)
+    {
+        var game = new Game(playerSymbol);
+        var gameEntity = DatasourceMapper.GameToEntity(game);
+        repository.Save(gameEntity);
+        var gameDto = WebMapper.GameToDto(game);
+        return Ok(gameDto);
     }
 
     /// <summary>Обрабатывает ход игрока и возвращает обновлённую игру с ходом компьютера.</summary>

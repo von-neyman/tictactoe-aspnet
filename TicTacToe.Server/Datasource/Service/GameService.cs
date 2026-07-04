@@ -23,8 +23,7 @@ internal class GameService : IGameService
     /// <param name="gameId">Идентификатор игры.</param>
     public void MakeComputerMove(Guid gameId)
     {
-        var gameEntity = repository.GetById(gameId)!;
-        var game = DatasourceMapper.GameToDomain(gameEntity);
+        var game = GetGame(gameId)!;
         var bestMove = FindBestMove(game);
         var newField = game.Field.Clone();
         newField.Cells[bestMove.Row][bestMove.Col] = game.ComputerSymbol;
@@ -39,9 +38,8 @@ internal class GameService : IGameService
     /// <returns>true, если ход корректен и сохранён.</returns>
     public bool ValidatePlayerMove(Guid gameId, GameField playerField)
     {
-        var gameEntity = repository.GetById(gameId)!;
-        if (gameEntity.State != GameState.InProgress) return false;
-        var game = DatasourceMapper.GameToDomain(gameEntity);
+        var game = GetGame(gameId);
+        if (game == null || game.State != GameState.InProgress) return false;
         var originalField = game.Field;
         var changes = 0;
         for (int i = 0; i < GameField.Size; i++)
@@ -75,6 +73,27 @@ internal class GameService : IGameService
         if (winner == CellState.O) return GameState.OWon;
         if (IsBoardFull(field)) return GameState.Draw;
         return GameState.InProgress;
+    }
+
+    /// <summary>Возвращает игру по идентификатору или null, если игра не найдена.</summary>
+    /// <param name="gameId">Идентификатор игры.</param>
+    /// <returns>Доменная модель игры или null.</returns>
+    public Game? GetGame(Guid gameId)
+    {
+        var gameEntity = repository.GetById(gameId);
+        if (gameEntity == null) return null;
+        return DatasourceMapper.GameToDomain(gameEntity);
+    }
+
+    /// <summary>Создаёт новую игру, сохраняет в хранилище и возвращает. Если компьютер играет за X — сразу делает первый ход.</summary>
+    /// <param name="playerSymbol">Символ, выбранный игроком.</param>
+    /// <returns>Новая игра.</returns>
+    public Game NewGame(CellState playerSymbol)
+    {
+        var game = new Game(playerSymbol);
+        repository.Save(DatasourceMapper.GameToEntity(game));
+        if (game.ComputerSymbol == CellState.X) MakeComputerMove(game.Id);
+        return GetGame(game.Id)!;
     }
 
     /// <summary>Возвращает победителя (X или O) или null, если победителя нет.</summary>

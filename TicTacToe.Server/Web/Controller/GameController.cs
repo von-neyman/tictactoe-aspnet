@@ -1,10 +1,7 @@
 ﻿namespace TicTacToe.Server.Web.Controller;
 
 using Microsoft.AspNetCore.Mvc;
-using TicTacToe.Server.Datasource.Mapper;
-using TicTacToe.Server.Datasource.Repository;
 using TicTacToe.Server.Domain.Enum;
-using TicTacToe.Server.Domain.Model;
 using TicTacToe.Server.Domain.Service;
 using TicTacToe.Server.Web.Mapper;
 using TicTacToe.Server.Web.Model;
@@ -15,13 +12,11 @@ using TicTacToe.Server.Web.Model;
 public class GameController : ControllerBase
 {
     private readonly IGameService gameService;
-    private readonly IGameRepository repository;
 
-    /// <summary>Принимает сервис и репозиторий через конструктор.</summary>
-    public GameController(IGameService gameService, IGameRepository repository)
+    /// <summary>Принимает сервис через конструктор.</summary>
+    public GameController(IGameService gameService)
     {
         this.gameService = gameService;
-        this.repository = repository;
     }
 
     /// <summary>Создаёт новую игру и возвращает её.</summary>
@@ -29,9 +24,7 @@ public class GameController : ControllerBase
     [HttpPost("new")]
     public IActionResult NewGame([FromBody] CellState playerSymbol)
     {
-        var game = new Game(playerSymbol);
-        var gameEntity = DatasourceMapper.GameToEntity(game);
-        repository.Save(gameEntity);
+        var game = gameService.NewGame(playerSymbol);
         var gameDto = WebMapper.GameToDto(game);
         return Ok(gameDto);
     }
@@ -43,16 +36,14 @@ public class GameController : ControllerBase
     [HttpPost("{id}")]
     public IActionResult MakeMove(Guid id, [FromBody] GameDto dto)
     {
-        var gameEntity = repository.GetById(id);
-        if (gameEntity == null) return NotFound();
-        var game = WebMapper.GameToDomain(dto);
-        var isValid = gameService.ValidatePlayerMove(id, game.Field);
+        var game = gameService.GetGame(id);
+        if (game == null) return NotFound();
+        var playerGame = WebMapper.GameToDomain(dto);
+        var isValid = gameService.ValidatePlayerMove(id, playerGame.Field);
         if (!isValid) return BadRequest(new ErrorResponse { Message = "Некорректный ход. Попробуйте снова." });
-        var updatedGameEntity = repository.GetById(id)!;
-        var updatedGame = DatasourceMapper.GameToDomain(updatedGameEntity);
+        var updatedGame = gameService.GetGame(id)!;
         if (updatedGame.State == GameState.InProgress) gameService.MakeComputerMove(id);
-        var resultGameEntity = repository.GetById(id)!;
-        var resultGame = DatasourceMapper.GameToDomain(resultGameEntity);
+        var resultGame = gameService.GetGame(id)!;
         var resultGameDto = WebMapper.GameToDto(resultGame);
         return Ok(resultGameDto);
     }
@@ -62,9 +53,8 @@ public class GameController : ControllerBase
     [HttpGet("{id}")]
     public IActionResult GetGame(Guid id)
     {
-        var gameEntity = repository.GetById(id);
-        if (gameEntity == null) return NotFound();
-        var game = DatasourceMapper.GameToDomain(gameEntity);
+        var game = gameService.GetGame(id);
+        if (game == null) return NotFound();
         var gameDto = WebMapper.GameToDto(game);
         return Ok(gameDto);
     }

@@ -20,4 +20,14 @@ public interface IGameService
     /// <param name="field">Состояние игрового поля.</param>
     /// <returns>Состояние игры.</returns>
     GameState GetGameState(GameField field);
+
+    /// <summary>Возвращает игру по идентификатору или null, если игра не найдена.</summary>
+    /// <param name="gameId">Идентификатор игры.</param>
+    /// <returns>Доменная модель игры или null.</returns>
+    Game? GetGame(Guid gameId);
+
+    /// <summary>Создаёт новую игру, сохраняет в хранилище и возвращает.</summary>
+    /// <param name="playerSymbol">Символ, выбранный игроком.</param>
+    /// <returns>Новая игра.</returns>
+    Game NewGame(CellState playerSymbol);
 }

@@ -24,19 +24,21 @@ public class Game
     /// 2 — видит свои ближайшие ходы и ответ игрока (может защититься от немедленного поражения).
     /// Size * Size — просчитывает всё, идеальная игра.
     /// </summary>
-    public int Difficulty { get; init; } = GameField.Size * GameField.Size;
+    public int Difficulty { get; init; }
 
     /// <summary>Текущее состояние игры.</summary>
     public GameState State { get; init; }
 
     /// <summary>Создаёт новую игру с уникальным идентификатором, пустым полем и выбранными символами.</summary>
     /// <param name="playerSymbol">Символ, выбранный игроком.</param>
-    public Game(CellState playerSymbol)
+    /// <param name="difficulty">Сложность игры.</param>
+    public Game(CellState playerSymbol, int difficulty)
     {
         Id = Guid.NewGuid();
         Field = new GameField();
         PlayerSymbol = playerSymbol;
         ComputerSymbol = playerSymbol == CellState.X ? CellState.O : CellState.X;
+        Difficulty = difficulty;
         State = GameState.InProgress;
     }
 
@@ -46,7 +48,7 @@ public class Game
     /// <returns>Новая игра с обновлённым полем и состоянием.</returns>
     public Game UpdateField(GameField newField, GameState newState)
     {
-        return new Game(PlayerSymbol)
+        return new Game(PlayerSymbol, Difficulty)
         {
             Id = this.Id,
             Field = newField,

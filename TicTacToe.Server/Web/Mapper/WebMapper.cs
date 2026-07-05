@@ -39,11 +39,10 @@ internal static class WebMapper
     /// <returns>Доменная модель игры.</returns>
     internal static Game GameToDomain(GameDto dto)
     {
-        return new Game(dto.PlayerSymbol)
+        return new Game(dto.PlayerSymbol, dto.Difficulty)
         {
             Id = dto.Id,
             Field = GameFieldToDomain(dto.Field),
-            Difficulty = dto.Difficulty,
             State = dto.State
         };
     }

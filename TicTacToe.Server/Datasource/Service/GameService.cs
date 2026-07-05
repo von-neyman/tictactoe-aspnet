@@ -87,10 +87,11 @@ internal class GameService : IGameService
 
     /// <summary>Создаёт новую игру, сохраняет в хранилище и возвращает. Если компьютер играет за X — сразу делает первый ход.</summary>
     /// <param name="playerSymbol">Символ, выбранный игроком.</param>
+    /// <param name="difficulty">Сложность игры.</param>
     /// <returns>Новая игра.</returns>
-    public Game NewGame(CellState playerSymbol)
+    public Game NewGame(CellState playerSymbol, int difficulty)
     {
-        var game = new Game(playerSymbol);
+        var game = new Game(playerSymbol, difficulty);
         repository.Save(DatasourceMapper.GameToEntity(game));
         if (game.ComputerSymbol == CellState.X) MakeComputerMove(game.Id);
         return GetGame(game.Id)!;

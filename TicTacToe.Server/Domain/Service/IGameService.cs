@@ -28,6 +28,7 @@ public interface IGameService
 
     /// <summary>Создаёт новую игру, сохраняет в хранилище и возвращает.</summary>
     /// <param name="playerSymbol">Символ, выбранный игроком.</param>
+    /// <param name="difficulty">Сложность игры.</param>
     /// <returns>Новая игра.</returns>
-    Game NewGame(CellState playerSymbol);
+    Game NewGame(CellState playerSymbol, int difficulty);
 }

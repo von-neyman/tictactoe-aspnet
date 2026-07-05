@@ -38,11 +38,10 @@ internal static class DatasourceMapper
     /// <returns>Доменная модель игры.</returns>
     internal static Game GameToDomain(GameEntity entity)
     {
-        return new Game(entity.PlayerSymbol)
+        return new Game(entity.PlayerSymbol, entity.Difficulty)
         {
             Id = entity.Id,
             Field = GameFieldToDomain(entity.Field),
-            Difficulty = entity.Difficulty,
             State = entity.State
         };
     }

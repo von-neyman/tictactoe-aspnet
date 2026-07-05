@@ -2,6 +2,7 @@
 
 using Microsoft.AspNetCore.Mvc;
 using TicTacToe.Server.Domain.Enum;
+using TicTacToe.Server.Domain.Model;
 using TicTacToe.Server.Domain.Service;
 using TicTacToe.Server.Web.Mapper;
 using TicTacToe.Server.Web.Model;
@@ -20,11 +21,13 @@ public class GameController : ControllerBase
     }
 
     /// <summary>Создаёт новую игру и возвращает её.</summary>
-    /// <param name="playerSymbol">Символ, выбранный игроком (X или O).</param>
+    /// <param name="newGame">Параметры новой игры: символ игрока и сложность.</param>
     [HttpPost("new")]
-    public IActionResult NewGame([FromBody] CellState playerSymbol)
+    public IActionResult NewGame([FromBody] NewGameRequest newGame)
     {
-        var game = gameService.NewGame(playerSymbol);
+        var playerSymbol = newGame.PlayerSymbol == CellState.O ? CellState.O : CellState.X;
+        var difficulty = newGame.Difficulty is 0 or 1 or 2 ? newGame.Difficulty : GameField.Size * GameField.Size;
+        var game = gameService.NewGame(playerSymbol, difficulty);
         var gameDto = WebMapper.GameToDto(game);
         return Ok(gameDto);
     }

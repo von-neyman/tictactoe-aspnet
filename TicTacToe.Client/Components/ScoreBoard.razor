@@ -1,0 +1,11 @@
+﻿<div class="scoreboard">
+    <span>Победы: @wins</span>
+    <span>Поражения: @losses</span>
+    <span>Ничьи: @draws</span>
+</div>
+
+@code {
+    [Parameter] public int wins { get; set; }
+    [Parameter] public int losses { get; set; }
+    [Parameter] public int draws { get; set; }
+}

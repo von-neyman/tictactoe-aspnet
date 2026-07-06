@@ -1,1 +1,96 @@
 ﻿@page "/"
+@using TicTacToe.Client.Service
+@using TicTacToe.Client.Model
+@using TicTacToe.Client.Enum
+@using TicTacToe.Client.Components
+@inject GameClient gameClient
+
+<div class="page">
+    <ScoreBoard wins="@wins" losses="@losses" draws="@draws" />
+    <h1 class="title">Крестики-Нолики</h1>
+    @if (game == null)
+    {
+        <NewGameSetup OnStart="HandleStart" />
+    }
+    else
+    {
+        <div class="result @resultColor">@(string.IsNullOrEmpty(resultMessage) ? "\u00A0" : resultMessage)</div>
+        <Board game="@game" isGameOver="@isGameOver" OnCellClick="HandleCellClick" />
+        <div class="players">
+            <span>Игрок: @GetSymbol(game.PlayerSymbol)</span>
+            <span>Вертер: @GetSymbol(game.ComputerSymbol)</span>
+        </div>
+        @if (isGameOver)
+        {
+            <button class="btn-start" @onclick="ResetGame">Выйти</button>
+        }
+    }
+</div>
+
+@code {
+    private GameDto? game;
+    private int wins, losses, draws;
+    private bool isGameOver;
+    private string resultMessage = "";
+    private string resultColor = "";
+
+    private async Task HandleStart((CellState symbol, int difficulty) settings)
+    {
+        game = await gameClient.CreateGame(settings.symbol, settings.difficulty);
+        isGameOver = game?.State != GameState.InProgress;
+        CheckResult();
+    }
+
+    private async Task HandleCellClick((int row, int col) move)
+    {
+        if (game == null || isGameOver) return;
+        if (game.Field.Cells[move.row][move.col] != CellState.Empty) return;
+        game.Field.Cells[move.row][move.col] = game.PlayerSymbol;
+        var result = await gameClient.MakeMove(game.Id, game);
+        if (result != null)
+        {
+            game = result;
+            isGameOver = game.State != GameState.InProgress;
+            CheckResult();
+        }
+    }
+
+    private void CheckResult()
+    {
+        if (game == null) return;
+        resultMessage = game.State switch
+        {
+            GameState.XWon => game.PlayerSymbol == CellState.X ? "Победа!" : "Поражение!",
+            GameState.OWon => game.PlayerSymbol == CellState.O ? "Победа!" : "Поражение!",
+            GameState.Draw => "Ничья!",
+            _ => ""
+        };
+        resultColor = game.State switch
+        {
+            GameState.XWon or GameState.OWon => resultMessage == "Победа!" ? "win" : "lose",
+            GameState.Draw => "draw",
+            _ => ""
+        };
+        if (isGameOver)
+        {
+            if (resultMessage == "Победа!") wins++;
+            else if (resultMessage == "Поражение!") losses++;
+            else if (resultMessage == "Ничья!") draws++;
+        }
+    }
+
+    private void ResetGame()
+    {
+        game = null;
+        isGameOver = false;
+        resultMessage = "";
+        resultColor = "";
+    }
+
+    private string GetSymbol(CellState state) => state switch
+    {
+        CellState.X => "✕",
+        CellState.O => "◯",
+        _ => ""
+    };
+}

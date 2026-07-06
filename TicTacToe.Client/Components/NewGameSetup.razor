@@ -1,0 +1,49 @@
+﻿@using TicTacToe.Client.Enum
+
+<div class="new-game-setup">
+    <div class="setup-label">Выберите символ</div>
+    <div class="symbol-choices">
+        <label class="choice">
+            <input type="radio" name="symbol" value="X" @onchange="() => playerSymbol = CellState.X" checked />
+            ✕
+        </label>
+        <label class="choice">
+            <input type="radio" name="symbol" value="O" @onchange="() => playerSymbol = CellState.O" />
+            ◯
+        </label>
+    </div>
+
+    <div class="setup-label">Выберите сложность</div>
+    <div class="difficulty-choices">
+        <label class="choice">
+            <input type="radio" name="difficulty" value="0" @onchange="() => difficulty = 0" />
+            Балбес
+        </label>
+        <label class="choice">
+            <input type="radio" name="difficulty" value="1" @onchange="() => difficulty = 1" />
+            Неосторожный
+        </label>
+        <label class="choice">
+            <input type="radio" name="difficulty" value="2" @onchange="() => difficulty = 2" />
+            Опытный
+        </label>
+        <label class="choice">
+            <input type="radio" name="difficulty" value="9" @onchange="() => difficulty = 9" checked />
+            Мастер
+        </label>
+    </div>
+
+    <button class="btn-start" @onclick="StartGame">Начать новую игру</button>
+</div>
+
+@code {
+    [Parameter] public EventCallback<(CellState symbol, int difficulty)> OnStart { get; set; }
+
+    private CellState playerSymbol = CellState.X;
+    private int difficulty = 9;
+
+    private async Task StartGame()
+    {
+        await OnStart.InvokeAsync((playerSymbol, difficulty));
+    }
+}

@@ -1,0 +1,36 @@
+﻿@using TicTacToe.Client.Enum
+@using TicTacToe.Client.Model
+
+@if (game == null) return;
+
+<div class="board @(isGameOver ? "sepia" : "")">
+    @for (int row = 0; row < cells.Length; row++)
+    {
+        <div class="board-row">
+            @for (int col = 0; col < cells[row].Length; col++)
+            {
+                var r = row;
+                var c = col;
+                <div class="cell @(isGameOver ? "disabled" : "")"
+                     @onclick="() => OnCellClick.InvokeAsync((r, c))">
+                    <span class="symbol">@GetSymbol(cells[r][c])</span>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public GameDto? game { get; set; }
+    [Parameter] public bool isGameOver { get; set; }
+    [Parameter] public EventCallback<(int row, int col)> OnCellClick { get; set; }
+
+    private CellState[][] cells => game?.Field?.Cells ?? Array.Empty<CellState[]>();
+
+    private string GetSymbol(CellState state) => state switch
+    {
+        CellState.X => "✕",
+        CellState.O => "◯",
+        _ => ""
+    };
+}

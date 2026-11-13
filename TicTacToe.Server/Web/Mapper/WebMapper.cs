@@ -28,6 +28,7 @@ internal static class WebMapper
         for (int i = 0; i < GameField.Size; i++)
         {
             cells[i] = new CellState[GameField.Size];
+
             for (int j = 0; j < GameField.Size; j++)
                 cells[i][j] = domain.Cells[i][j];
         }

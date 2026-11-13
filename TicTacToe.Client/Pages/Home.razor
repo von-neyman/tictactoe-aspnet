@@ -45,6 +45,7 @@
     {
         if (game == null || isGameOver) return;
         if (game.Field.Cells[move.row][move.col] != CellState.Empty) return;
+
         game.Field.Cells[move.row][move.col] = game.PlayerSymbol;
         var result = await gameClient.MakeMove(game.Id, game);
         if (result != null)
@@ -58,6 +59,7 @@
     private void CheckResult()
     {
         if (game == null) return;
+
         resultMessage = game.State switch
         {
             GameState.XWon => game.PlayerSymbol == CellState.X ? "Победа!" : "Поражение!",
@@ -71,6 +73,7 @@
             GameState.Draw => "draw",
             _ => ""
         };
+
         if (isGameOver)
         {
             if (resultMessage == "Победа!") wins++;

@@ -10,6 +10,8 @@ public class Program
         builder.Services.AddControllers();
         builder.Services.AddEndpointsApiExplorer();
         builder.Services.AddSwaggerGen();
+        builder.Services.AddHealthChecks();
+
         var corsOrigins = builder.Configuration["CorsOrigins"] ?? "";
         builder.Services.AddCors(options =>
         {
@@ -20,15 +22,20 @@ public class Program
                       .AllowAnyMethod();
             });
         });
+
         Configuration.Configure(builder.Services);
+
         var app = builder.Build();
         app.UseCors();
+
         if (app.Environment.IsDevelopment())
         {
             app.UseSwagger();
             app.UseSwaggerUI();
         }
+
         app.MapControllers();
+        app.MapHealthChecks("/health");
         app.Run();
     }
 }

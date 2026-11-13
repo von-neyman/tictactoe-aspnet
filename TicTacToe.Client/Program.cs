@@ -12,13 +12,11 @@ public class Program
         builder.RootComponents.Add<App>("#app");
         builder.RootComponents.Add<HeadOutlet>("head::after");
 
-        var http = new HttpClient { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) };
-        var config = await http.GetStringAsync("appsettings.json");
-        var json = System.Text.Json.JsonDocument.Parse(config);
-        var serverUrl = json.RootElement.GetProperty("ServerUrl").GetString();
-
-        builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri(serverUrl!) });
-        builder.Services.AddScoped<GameClient>();
+        var serverUrl = builder.Configuration["ServerUrl"] ?? builder.HostEnvironment.BaseAddress;
+        builder.Services.AddHttpClient<GameClient>(client =>
+        {
+            client.BaseAddress = new Uri(serverUrl);
+        });
 
         await builder.Build().RunAsync();
     }

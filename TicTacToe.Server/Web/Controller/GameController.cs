@@ -27,6 +27,7 @@ public class GameController : ControllerBase
     {
         var playerSymbol = newGame.PlayerSymbol == CellState.O ? CellState.O : CellState.X;
         var difficulty = newGame.Difficulty is 0 or 1 or 2 ? newGame.Difficulty : GameField.Size * GameField.Size;
+
         var game = gameService.NewGame(playerSymbol, difficulty);
         var gameDto = WebMapper.GameToDto(game);
         return Ok(gameDto);
@@ -41,11 +42,14 @@ public class GameController : ControllerBase
     {
         var game = gameService.GetGame(id);
         if (game == null) return NotFound();
+
         var playerGame = WebMapper.GameToDomain(dto);
         var isValid = gameService.ValidatePlayerMove(id, playerGame.Field);
         if (!isValid) return BadRequest(new ErrorResponse { Message = "Некорректный ход. Попробуйте снова." });
+
         var updatedGame = gameService.GetGame(id)!;
         if (updatedGame.State == GameState.InProgress) gameService.MakeComputerMove(id);
+
         var resultGame = gameService.GetGame(id)!;
         var resultGameDto = WebMapper.GameToDto(resultGame);
         return Ok(resultGameDto);
@@ -58,6 +62,7 @@ public class GameController : ControllerBase
     {
         var game = gameService.GetGame(id);
         if (game == null) return NotFound();
+
         var gameDto = WebMapper.GameToDto(game);
         return Ok(gameDto);
     }

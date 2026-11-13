@@ -25,9 +25,11 @@ internal class GameService : IGameService
     {
         var game = GetGame(gameId)!;
         var bestMove = FindBestMove(game);
+
         var newField = game.Field.Clone();
         newField.Cells[bestMove.Row][bestMove.Col] = game.ComputerSymbol;
         var newState = GetGameState(newField);
+
         var updatedGame = game.UpdateField(newField, newState);
         repository.Save(DatasourceMapper.GameToEntity(updatedGame));
     }
@@ -93,7 +95,9 @@ internal class GameService : IGameService
     {
         var game = new Game(playerSymbol, difficulty);
         repository.Save(DatasourceMapper.GameToEntity(game));
+
         if (game.ComputerSymbol == CellState.X) MakeComputerMove(game.Id);
+
         return GetGame(game.Id)!;
     }
 
@@ -103,6 +107,7 @@ internal class GameService : IGameService
     private static CellState? GetWinner(GameField field)
     {
         var cells = field.Cells;
+
         for (int row = 0; row < GameField.Size; row++)
         {
             if (cells[row][0] != CellState.Empty &&
@@ -110,6 +115,7 @@ internal class GameService : IGameService
                 cells[row][1] == cells[row][2])
                 return cells[row][0];
         }
+
         for (int col = 0; col < GameField.Size; col++)
         {
             if (cells[0][col] != CellState.Empty &&
@@ -117,14 +123,17 @@ internal class GameService : IGameService
                 cells[1][col] == cells[2][col])
                 return cells[0][col];
         }
+
         if (cells[0][0] != CellState.Empty &&
             cells[0][0] == cells[1][1] &&
             cells[1][1] == cells[2][2])
             return cells[0][0];
+
         if (cells[0][2] != CellState.Empty &&
             cells[0][2] == cells[1][1] &&
             cells[1][1] == cells[2][0])
             return cells[0][2];
+
         return null;
     }
 

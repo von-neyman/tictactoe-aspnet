@@ -153,9 +153,7 @@ jobs:
           file: TicTacToe.Server/Dockerfile
           target: production
           push: true
-          tags: |
-            ghcr.io/von-neyman/tictactoe-aspnet-server:latest
-            # ghcr.io/von-neyman/tictactoe-aspnet-server:${{ github.sha }}
+          tags: ghcr.io/von-neyman/tictactoe-aspnet-server:latest
 
       - name: Build and push client
         uses: docker/build-push-action@v7
@@ -164,9 +162,7 @@ jobs:
           file: TicTacToe.Client/Dockerfile
           target: production
           push: true
-          tags: |
-            ghcr.io/von-neyman/tictactoe-aspnet-client:latest
-            # ghcr.io/von-neyman/tictactoe-aspnet-client:${{ github.sha }}
+          tags: ghcr.io/von-neyman/tictactoe-aspnet-client:latest
 
       - name: Build and push proxy
         uses: docker/build-push-action@v7
@@ -174,9 +170,7 @@ jobs:
           context: .
           file: nginx-proxy/Dockerfile
           push: true
-          tags: |
-            ghcr.io/von-neyman/tictactoe-aspnet-proxy:latest
-            # ghcr.io/von-neyman/tictactoe-aspnet-proxy:${{ github.sha }}
+          tags: ghcr.io/von-neyman/tictactoe-aspnet-proxy:latest
 
       - name: Format commit time
         id: format-time

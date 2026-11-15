@@ -17,7 +17,7 @@ cd tictactoe-aspnet
 2. Настроить несколько запускаемых проектов: `TicTacToe.Server` и `TicTacToe.Client` (правой кнопкой по решению → Настроить запускаемые проекты → Несколько запускаемых проектов → Запуск для обоих)
 3. Запустить (F5)
 
-## Visual Studio Code / терминал
+### Visual Studio Code / терминал
 
 Запустить сервер и клиент в разных терминалах:
 
@@ -61,7 +61,7 @@ Now listening on: http://localhost:5122   ← клиент
 
 При запуске через Visual Studio порты фиксированные (7175 и 7160) и уже прописаны в appsettings.json и launchSettings.json. При запуске через терминал порты назначаются динамически — их нужно обновлять в настройках вручную.
 
-## Требования
+### Требования
 
 | Компонент | Примечание |
 |-----------|------------|
@@ -69,6 +69,130 @@ Now listening on: http://localhost:5122   ← клиент
 | Браузер | Любой современный (Chrome, Firefox, Edge) |
 
 ![Меню новой игры](screenshots/menu.png)
+
+## Docker
+
+В проекте есть `Dockerfile`, а также `docker-compose.yml`, который связывает контейнеры в одну сеть.
+
+### Архитектура
+
+- `server` — ASP.NET Core Web API. Слушает порт 8080 внутри сети Docker.
+- `client` — Blazor WebAssembly, собранный в статику и раздаваемый через nginx. Слушает порт 80 внутри сети.
+- `proxy` — внешний nginx. Слушает порт 80 (наружу проброшен на 8080). Это единственная точка входа для браузера.
+
+**proxy** принимает все внешние запросы и маршрутизирует их:
+
+- `/` — отдаёт статику Blazor из `client`.
+- `/game/` — проксирует в `server` (API игры).
+- `/swagger` — проксирует в `server` (Swagger UI, доступен только в Development).
+
+### Запуск
+
+**Production:**
+
+```bash
+docker compose up --build
+```
+
+или в фоне:
+
+```bash
+docker compose up -d --build
+```
+
+- Открыть http://localhost:8080 в браузере.
+
+**Development (игра + Swagger):**
+
+```bash
+# bash
+ENV=Development docker compose up --build
+```
+
+```powershell
+# powershell
+$env:ENV="Development"; docker compose up --build
+```
+
+- Игра: открыть http://localhost:8080 в браузере.
+- Swagger: открыть http://localhost:8080/swagger или http://localhost:8080/swagger/.
+
+### Остановка
+
+```bash
+docker compose down
+```
+
+### Сборка отдельных образов
+
+`Dockerfile` (сервер и клиент) используют multi-stage build:
+
+- `setup` — установка зависимостей и копирование кода.
+- `checkstyle` — проверка стиля.
+- `test` — тесты.
+- `publish` — сборка артефакта.
+- `production` — финальный образ.
+
+**Сервер:**
+
+```bash
+docker build -f TicTacToe.Server/Dockerfile --target production -t tictactoe-server .
+```
+
+**Клиент:**
+
+```bash
+docker build -f TicTacToe.Client/Dockerfile --target production -t tictactoe-client .
+```
+
+**Прокси:**
+
+```bash
+docker build -f nginx-proxy/Dockerfile -t tictactoe-proxy .
+```
+
+### Запуск отдельных контейнеров
+
+**Создание сети:**
+
+```bash
+docker network create tictactoe-net
+```
+
+**Запуск сервера:**
+
+```bash
+# Production
+docker run -d --name server --network tictactoe-net -e CorsOrigins=http://localhost:8080 tictactoe-server
+```
+
+```bash
+# Development
+docker run -d --name server --network tictactoe-net -e ASPNETCORE_ENVIRONMENT=Development -e CorsOrigins=http://localhost:8080 tictactoe-server
+```
+
+**Запуск клиента:**
+
+```bash
+docker run -d --name client --network tictactoe-net tictactoe-client
+```
+
+**Запуск прокси:**
+
+```bash
+docker run -d --name proxy --network tictactoe-net -p 8080:80 tictactoe-proxy
+```
+
+- Игра: открыть http://localhost:8080 в браузере.
+- Swagger: открыть http://localhost:8080/swagger или http://localhost:8080/swagger/.
+
+**Остановка и удаление:**
+
+```bash
+docker stop server client proxy
+docker rm server client proxy
+docker network rm tictactoe-net
+```
 
 ## Как играть
 

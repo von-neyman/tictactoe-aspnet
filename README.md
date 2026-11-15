@@ -1,5 +1,7 @@
 # TicTacToe
 
+[![CI/CD](https://github.com/von-neyman/tictactoe-aspnet/actions/workflows/tictactoe-aspnet.yml/badge.svg)](https://github.com/von-neyman/tictactoe-aspnet/actions/workflows/tictactoe-aspnet.yml)
+
 Игра «Крестики-Нолики» с компьютером. Сервер на ASP.NET Core Web API, клиент на Blazor WebAssembly. Проект создан в учебных целях в рамках обучения в Школе 21.
 
 ![Игровой процесс](screenshots/game.png)
@@ -13,7 +15,7 @@ cd tictactoe-aspnet
 
 ### Visual Studio
 
-1. Открыть `TicTacToe.sln`
+1. Открыть `TicTacToe.slnx`
 2. Настроить несколько запускаемых проектов: `TicTacToe.Server` и `TicTacToe.Client` (правой кнопкой по решению → Настроить запускаемые проекты → Несколько запускаемых проектов → Запуск для обоих)
 3. Запустить (F5)
 
@@ -88,7 +90,7 @@ Now listening on: http://localhost:5122   ← клиент
 
 ### Запуск
 
-**Production:**
+**Production (локальная сборка):**
 
 ```bash
 docker compose up --build
@@ -98,6 +100,18 @@ docker compose up --build
 
 ```bash
 docker compose up -d --build
+```
+
+**Production (из GHCR):**
+
+```bash
+docker compose -f docker-compose.ghcr.yml up
+```
+
+или в фоне:
+
+```bash
+docker compose -f docker-compose.ghcr.yml up -d
 ```
 
 - Открыть http://localhost:8080 в браузере.
@@ -121,6 +135,12 @@ $env:ENV="Development"; docker compose up --build
 
 ```bash
 docker compose down
+```
+
+или, если запускали из GHCR:
+
+```bash
+docker compose -f docker-compose.ghcr.yml down
 ```
 
 ### Сборка отдельных образов
@@ -241,3 +261,5 @@ docker network rm tictactoe-net
 - Dependency Injection
 - CORS
 - Swagger
+- Docker, Docker Compose
+- CI/CD

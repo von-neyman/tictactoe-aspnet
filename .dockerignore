@@ -1,9 +1,30 @@
+# Артефакты сборки
 **/bin/
 **/obj/
+**/publish/
+
+# IDE
 **/.vs/
+.vscode/
 **/*.user
 **/*.suo
-**/screenshots/
+
+# Git
 .git/
 .gitignore
-README.md
+
+# Docker
+**/Dockerfile
+.dockerignore
+docker-compose.yml
+docker-compose.ghcr.yml
+
+# CI/CD
+.github/
+
+# Документация
+*.md
+**/screenshots/
+
+# Прочее
+*.log

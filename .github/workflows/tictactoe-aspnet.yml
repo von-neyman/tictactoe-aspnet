@@ -1,0 +1,203 @@
+name: TicTacToe ASP.NET CI/CD
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  ci:
+    runs-on: ubuntu-26.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Server - Setup
+        id: server-setup
+        run: docker build --target setup -t tictactoe-aspnet-server:setup -f TicTacToe.Server/Dockerfile .
+
+      - name: Server - Checkstyle
+        id: server-checkstyle
+        run: docker build --target checkstyle -t tictactoe-aspnet-server:checkstyle -f TicTacToe.Server/Dockerfile .
+
+      - name: Server - Test
+        id: server-test
+        run: docker build --target test -t tictactoe-aspnet-server:test -f TicTacToe.Server/Dockerfile .
+
+      - name: Server - Publish
+        id: server-publish
+        run: docker build --target publish -t tictactoe-aspnet-server:publish -f TicTacToe.Server/Dockerfile .
+
+      - name: Server - Production
+        id: server-prod
+        run: docker build --target production -t tictactoe-aspnet-server:latest -f TicTacToe.Server/Dockerfile .
+
+      - name: Server - Check run
+        id: server-checkrun
+        run: |
+          docker run -d --name server-smoketest tictactoe-aspnet-server:latest
+          bash .github/scripts/wait-for-healthy.sh server-smoketest
+          docker stop server-smoketest && docker rm server-smoketest
+
+      - name: Client - Setup
+        id: client-setup
+        run: docker build --target setup -t tictactoe-aspnet-client:setup -f TicTacToe.Client/Dockerfile .
+
+      - name: Client - Checkstyle
+        id: client-checkstyle
+        run: docker build --target checkstyle -t tictactoe-aspnet-client:checkstyle -f TicTacToe.Client/Dockerfile .
+
+      - name: Client - Test
+        id: client-test
+        run: docker build --target test -t tictactoe-aspnet-client:test -f TicTacToe.Client/Dockerfile .
+
+      - name: Client - Publish
+        id: client-publish
+        run: docker build --target publish -t tictactoe-aspnet-client:publish -f TicTacToe.Client/Dockerfile .
+
+      - name: Client - Production
+        id: client-prod
+        run: docker build --target production -t tictactoe-aspnet-client:latest -f TicTacToe.Client/Dockerfile .
+
+      - name: Client - Check run
+        id: client-checkrun
+        run: |
+          docker run -d --name client-smoketest tictactoe-aspnet-client:latest
+          bash .github/scripts/wait-for-healthy.sh client-smoketest
+          docker stop client-smoketest && docker rm client-smoketest
+
+      - name: Proxy
+        id: proxy
+        run: docker build -t tictactoe-aspnet-proxy:latest -f nginx-proxy/Dockerfile .
+
+      - name: Integration - Production
+        id: integration-prod
+        run: |
+          docker compose up -d --build --wait
+          curl -f -s http://localhost:8080/
+          curl -f -s -X POST http://localhost:8080/game/new \
+            -H "Content-Type: application/json" \
+            -d '{"playerSymbol":1,"difficulty":9}'
+          docker compose down
+
+      - name: Integration - Development
+        id: integration-dev
+        run: |
+          ENV=Development docker compose up -d --build --wait
+          curl -f -s http://localhost:8080/swagger/
+          docker compose down
+
+      - name: Format commit time
+        id: format-time
+        if: always()
+        run: echo "COMMIT_TIME=$(TZ='Asia/Yekaterinburg' date -d '${{ github.event.head_commit.timestamp }}' '+%Y-%m-%d %H:%M')" >> $GITHUB_ENV
+
+      - name: Notify Telegram
+        if: always()
+        uses: cbrgm/telegram-github-action@v1
+        with:
+          token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          to: ${{ secrets.TELEGRAM_CHAT_ID }}
+          message: |
+            *Репозиторий:* ${{ github.repository }}
+            *Пайплайн:* ${{ github.workflow }}
+            *Этап CI:* ${{ job.status == 'success' && 'успех' || (job.status == 'failure' && 'провал' || '—') }}
+            - *Установка зависимостей сервера:* ${{ steps.server-setup.outcome == 'success' && 'успех' || (steps.server-setup.outcome == 'failure' && 'провал' || '—') }}
+            - *Проверка стиля сервера:* ${{ steps.server-checkstyle.outcome == 'success' && 'успех' || (steps.server-checkstyle.outcome == 'failure' && 'провал' || '—') }}
+            - *Тесты сервера:* ${{ steps.server-test.outcome == 'success' && 'успех' || (steps.server-test.outcome == 'failure' && 'провал' || '—') }}
+            - *Сборка артефакта сервера:* ${{ steps.server-publish.outcome == 'success' && 'успех' || (steps.server-publish.outcome == 'failure' && 'провал' || '—') }}
+            - *Сборка образа сервера:* ${{ steps.server-prod.outcome == 'success' && 'успех' || (steps.server-prod.outcome == 'failure' && 'провал' || '—') }}
+            - *Проверка запуска сервера:* ${{ steps.server-checkrun.outcome == 'success' && 'успех' || (steps.server-checkrun.outcome == 'failure' && 'провал' || '—') }}
+            - *Установка зависимостей клиента:* ${{ steps.client-setup.outcome == 'success' && 'успех' || (steps.client-setup.outcome == 'failure' && 'провал' || '—') }}
+            - *Проверка стиля клиента:* ${{ steps.client-checkstyle.outcome == 'success' && 'успех' || (steps.client-checkstyle.outcome == 'failure' && 'провал' || '—') }}
+            - *Тесты клиента:* ${{ steps.client-test.outcome == 'success' && 'успех' || (steps.client-test.outcome == 'failure' && 'провал' || '—') }}
+            - *Сборка артефакта клиента:* ${{ steps.client-publish.outcome == 'success' && 'успех' || (steps.client-publish.outcome == 'failure' && 'провал' || '—') }}
+            - *Сборка образа клиента:* ${{ steps.client-prod.outcome == 'success' && 'успех' || (steps.client-prod.outcome == 'failure' && 'провал' || '—') }}
+            - *Проверка запуска клиента:* ${{ steps.client-checkrun.outcome == 'success' && 'успех' || (steps.client-checkrun.outcome == 'failure' && 'провал' || '—') }}
+            - *Сборка образа прокси:* ${{ steps.proxy.outcome == 'success' && 'успех' || (steps.proxy.outcome == 'failure' && 'провал' || '—') }}
+            - *Интеграционная проверка (продакшен):* ${{ steps.integration-prod.outcome == 'success' && 'успех' || (steps.integration-prod.outcome == 'failure' && 'провал' || '—') }}
+            - *Интеграционная проверка (разработка):* ${{ steps.integration-dev.outcome == 'success' && 'успех' || (steps.integration-dev.outcome == 'failure' && 'провал' || '—') }}
+            *Автор:* ${{ github.actor }}
+            *Ветка:* ${{ github.ref_name }}
+            ---
+            *Коммит:* ${{ github.event.head_commit.message }}
+            ---
+            *Время:* ${{ env.COMMIT_TIME }}
+            *Ссылка:* https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          parse-mode: markdown
+
+  cd:
+    needs: ci
+    runs-on: ubuntu-26.04
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    environment: production
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push server
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: TicTacToe.Server/Dockerfile
+          target: production
+          push: true
+          tags: |
+            ghcr.io/von-neyman/tictactoe-aspnet-server:latest
+            # ghcr.io/von-neyman/tictactoe-aspnet-server:${{ github.sha }}
+
+      - name: Build and push client
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: TicTacToe.Client/Dockerfile
+          target: production
+          push: true
+          tags: |
+            ghcr.io/von-neyman/tictactoe-aspnet-client:latest
+            # ghcr.io/von-neyman/tictactoe-aspnet-client:${{ github.sha }}
+
+      - name: Build and push proxy
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: nginx-proxy/Dockerfile
+          push: true
+          tags: |
+            ghcr.io/von-neyman/tictactoe-aspnet-proxy:latest
+            # ghcr.io/von-neyman/tictactoe-aspnet-proxy:${{ github.sha }}
+
+      - name: Format commit time
+        id: format-time
+        if: always()
+        run: echo "COMMIT_TIME=$(TZ='Asia/Yekaterinburg' date -d '${{ github.event.head_commit.timestamp }}' '+%Y-%m-%d %H:%M')" >> $GITHUB_ENV
+
+      - name: Notify Telegram
+        if: always()
+        uses: cbrgm/telegram-github-action@v1
+        with:
+          token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          to: ${{ secrets.TELEGRAM_CHAT_ID }}
+          message: |
+            *Репозиторий:* ${{ github.repository }}
+            *Пайплайн:* ${{ github.workflow }}
+            *Этап CD:* ${{ job.status == 'success' && 'успех' || (job.status == 'failure' && 'провал' || '—') }}
+            *Автор:* ${{ github.actor }}
+            *Ветка:* ${{ github.ref_name }}
+            ---
+            *Коммит:* ${{ github.event.head_commit.message }}
+            ---
+            *Время:* ${{ env.COMMIT_TIME }}
+            *Ссылка:* https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          parse-mode: markdown

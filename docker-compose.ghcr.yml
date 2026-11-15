@@ -1,0 +1,21 @@
+name: tictactoe
+
+services:
+  server:
+    image: ghcr.io/von-neyman/tictactoe-aspnet-server:latest
+    environment:
+      - ASPNETCORE_ENVIRONMENT=${ENV:-Production}
+      - CorsOrigins=http://localhost:8080
+
+  client:
+    image: ghcr.io/von-neyman/tictactoe-aspnet-client:latest
+
+  proxy:
+    image: ghcr.io/von-neyman/tictactoe-aspnet-proxy:latest
+    ports:
+      - "8080:80"
+    depends_on:
+      server:
+        condition: service_healthy
+      client:
+        condition: service_healthy

@@ -1,5 +1,20 @@
-bin/
-obj/
-.vs/
-*.user
-*.suo
+# Артефакты сборки
+**/bin/
+**/obj/
+
+# IDE
+**/.vs/
+.vscode/
+**/*.user
+**/*.suo
+
+# NuGet
+*.nupkg
+*.snupkg
+
+# Логи
+*.log
+
+# OS
+.DS_Store
+Thumbs.db

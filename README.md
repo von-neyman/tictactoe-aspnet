@@ -263,3 +263,9 @@ docker network rm tictactoe-net
 - Swagger
 - Docker, Docker Compose
 - CI/CD
+
+## Документация
+
+Подробные инструкции по настройке и запуску:
+
+- [Настройка базы данных PostgreSQL](docs/database-setup.md)

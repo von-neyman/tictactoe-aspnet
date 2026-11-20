@@ -23,7 +23,7 @@ public class Program
             });
         });
 
-        Configuration.Configure(builder.Services);
+        Configuration.Configure(builder.Services, builder.Configuration);
 
         var app = builder.Build();
         app.UseCors();

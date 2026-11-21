@@ -1,5 +1,6 @@
 ﻿namespace TicTacToe.Server.Web.Controller;
 
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using TicTacToe.Server.Domain.Enum;
 using TicTacToe.Server.Domain.Model;
@@ -8,6 +9,7 @@ using TicTacToe.Server.Web.Mapper;
 using TicTacToe.Server.Web.Model;
 
 /// <summary>Контроллер для игры в крестики-нолики.</summary>
+[Authorize]
 [ApiController]
 [Route("game")]
 public class GameController : ControllerBase

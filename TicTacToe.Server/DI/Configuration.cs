@@ -7,6 +7,7 @@ using Npgsql;
 using TicTacToe.Server.Datasource;
 using TicTacToe.Server.Datasource.Repository;
 using TicTacToe.Server.Datasource.Service;
+using TicTacToe.Server.Domain.Repository;
 using TicTacToe.Server.Domain.Service;
 
 /// <summary>Конфигурация графа зависимостей приложения.</summary>
@@ -31,6 +32,10 @@ public static class Configuration
         }
 
         services.AddDbContext<AppDbContext>(options => options.UseNpgsql(connectionString));
+
+        services.AddScoped<IUserRepository, UserRepository>();
+        services.AddScoped<IUserService, UserService>();
+        services.AddScoped<IAuthService, AuthService>();
 
         services.AddSingleton<GameStorage>();
         services.AddSingleton<IGameRepository, GameRepository>();

@@ -63,4 +63,16 @@ internal static class WebMapper
             State = domain.State
         };
     }
+
+    /// <summary>Преобразует Web-модель SignUpRequest в доменную.</summary>
+    /// <param name="request">Модель запроса на регистрацию от клиента.</param>
+    /// <returns>Доменная модель запроса на регистрацию.</returns>
+    internal static Domain.Model.SignUpRequest SignUpRequestToDomain(Web.Model.SignUpRequest request)
+    {
+        return new Domain.Model.SignUpRequest
+        {
+            Login = request.Login,
+            Password = request.Password
+        };
+    }
 }

@@ -4,7 +4,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
-using TicTacToe.Server.Datasource;
 using TicTacToe.Server.Datasource.Repository;
 using TicTacToe.Server.Datasource.Service;
 using TicTacToe.Server.Domain.Repository;
@@ -31,14 +30,13 @@ public static class Configuration
             connectionString = builder.ConnectionString;
         }
 
-        services.AddDbContext<AppDbContext>(options => options.UseNpgsql(connectionString));
+        services.AddDbContext<GameDbContext>(options => options.UseNpgsql(connectionString));
 
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IUserService, UserService>();
         services.AddScoped<IAuthService, AuthService>();
 
-        services.AddSingleton<GameStorage>();
-        services.AddSingleton<IGameRepository, GameRepository>();
-        services.AddSingleton<IGameService, GameService>();
+        services.AddScoped<IGameRepository, GameRepository>();
+        services.AddScoped<IGameService, GameService>();
     }
 }

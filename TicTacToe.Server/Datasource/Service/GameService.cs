@@ -6,7 +6,7 @@ using TicTacToe.Server.Domain.Enum;
 using TicTacToe.Server.Domain.Model;
 using TicTacToe.Server.Domain.Service;
 
-/// <summary>Реализация игровой логики: Минимакс, валидация хода игрока, проверка окончания игры.</summary>
+/// <summary>Реализация игровой логики: создание игр, ходы, список игр.</summary>
 internal class GameService : IGameService
 {
     /// <summary>Репозиторий для доступа к хранилищу игр.</summary>
@@ -19,65 +19,74 @@ internal class GameService : IGameService
         this.repository = repository;
     }
 
-    /// <summary>Выполняет ход компьютера алгоритмом Минимакс и сохраняет результат в хранилище.</summary>
-    /// <param name="gameId">Идентификатор игры.</param>
-    public void MakeComputerMove(Guid gameId)
+    /// <summary>Создаёт новую игру (с компьютером или с человеком).</summary>
+    /// <param name="creatorId">UUID создателя игры.</param>
+    /// <param name="creatorSymbol">Символ создателя (X или O).</param>
+    /// <param name="difficulty">Сложность игры с компьютером (null — игра с человеком).</param>
+    /// <returns>Созданная игра.</returns>
+    public Game NewGame(Guid creatorId, CellState creatorSymbol, int? difficulty = null)
     {
-        var game = GetGame(gameId)!;
-        var bestMove = FindBestMove(game);
-
-        var newField = game.Field.Clone();
-        newField.Cells[bestMove.Row][bestMove.Col] = game.ComputerSymbol;
-        var newState = GetGameState(newField);
-
-        var updatedGame = game.UpdateField(newField, newState);
-        repository.Save(DatasourceMapper.GameToEntity(updatedGame));
+        var game = new Game(creatorId, creatorSymbol, difficulty);
+        if (game.PlayerXType == PlayerType.Computer) game = MakeComputerMove(game);
+        repository.Save(DatasourceMapper.GameToEntity(game));
+        return game;
     }
 
-    /// <summary>Проверяет, что игрок сделал корректный ход и сохраняет его, если ход корректен.</summary>
+    /// <summary>Присоединяет игрока к игре.</summary>
     /// <param name="gameId">Идентификатор игры.</param>
-    /// <param name="playerField">Состояние поля после хода игрока.</param>
-    /// <returns>true, если ход корректен и сохранён.</returns>
-    public bool ValidatePlayerMove(Guid gameId, GameField playerField)
+    /// <param name="playerId">UUID присоединяющегося игрока.</param>
+    /// <returns>true, если присоединение успешно.</returns>
+    public bool JoinGame(Guid gameId, Guid playerId)
     {
         var game = GetGame(gameId);
-        if (game == null || game.State != GameState.InProgress) return false;
-        var originalField = game.Field;
-        var changes = 0;
-        for (int i = 0; i < GameField.Size; i++)
-        {
-            for (int j = 0; j < GameField.Size; j++)
-            {
-                var oldCell = originalField.Cells[i][j];
-                var newCell = playerField.Cells[i][j];
-                if (oldCell == newCell) continue;
-                if (oldCell != CellState.Empty || newCell != game.PlayerSymbol) return false;
-                changes++;
-            }
-        }
-        var isValid = changes == 1;
-        if (isValid)
-        {
-            var newState = GetGameState(playerField);
-            var updatedGame = game.UpdateField(playerField, newState);
-            repository.Save(DatasourceMapper.GameToEntity(updatedGame));
-        }
-        return isValid;
+        if (game == null) return false;
+        if (game.State != GameState.WaitingForPlayers) return false;
+        if (game.PlayerXId == playerId || game.PlayerOId == playerId) return false;
+
+        var updated = game.JoinAsOpponent(playerId);
+        repository.Save(DatasourceMapper.GameToEntity(updated));
+        return true;
     }
 
-    /// <summary>Возвращает текущее состояние игры: продолжается, ничья, победа X или победа O.</summary>
-    /// <param name="field">Состояние игрового поля.</param>
-    /// <returns>Состояние игры.</returns>
-    public GameState GetGameState(GameField field)
+    /// <summary>Возвращает список доступных игр (ожидание игроков).</summary>
+    /// <param name="excludeUserId">UUID пользователя, чьи игры нужно исключить (создатель).</param>
+    /// <returns>Список доступных игр.</returns>
+    public List<Game> GetAvailableGames(Guid? excludeUserId = null)
     {
-        var winner = GetWinner(field);
-        if (winner == CellState.X) return GameState.XWon;
-        if (winner == CellState.O) return GameState.OWon;
-        if (IsBoardFull(field)) return GameState.Draw;
-        return GameState.InProgress;
+        var entities = repository.GetAvailableGames(excludeUserId);
+        return entities.Select(DatasourceMapper.GameToDomain).ToList();
     }
 
-    /// <summary>Возвращает игру по идентификатору или null, если игра не найдена.</summary>
+    /// <summary>Возвращает список незавершённых игр пользователя.</summary>
+    /// <param name="userId">UUID пользователя.</param>
+    /// <returns>Список игр.</returns>
+    public List<Game> GetUserGames(Guid? userId = null)
+    {
+        var entities = repository.GetUserGames(userId);
+        return entities.Select(DatasourceMapper.GameToDomain).ToList();
+    }
+
+    /// <summary>Делает ход игрока и (если нужно) ход компьютера.</summary>
+    /// <param name="gameId">Идентификатор игры.</param>
+    /// <param name="playerId">UUID игрока, делающего ход.</param>
+    /// <param name="playerField">Состояние поля после хода.</param>
+    /// <returns>true, если ход успешен.</returns>
+    public bool MakeMove(Guid gameId, Guid playerId, GameField playerField)
+    {
+        var game = GetGame(gameId);
+        if (game == null) return false;
+        if (game.State != GameState.PlayerTurn && !(game.State == GameState.WaitingForPlayers && game.PlayerXId == playerId)) return false;
+        if (game.CurrentTurnPlayerId != playerId) return false;
+        if (!ValidatePlayerMove(game, playerField)) return false;
+
+        var updated = ApplyMove(game, playerField);
+        if (IsComputerTurn(updated)) updated = MakeComputerMove(updated);
+
+        repository.Save(DatasourceMapper.GameToEntity(updated));
+        return true;
+    }
+
+    /// <summary>Возвращает игру по идентификатору или null.</summary>
     /// <param name="gameId">Идентификатор игры.</param>
     /// <returns>Доменная модель игры или null.</returns>
     public Game? GetGame(Guid gameId)
@@ -87,19 +96,94 @@ internal class GameService : IGameService
         return DatasourceMapper.GameToDomain(gameEntity);
     }
 
-    /// <summary>Создаёт новую игру, сохраняет в хранилище и возвращает. Если компьютер играет за X — сразу делает первый ход.</summary>
-    /// <param name="playerSymbol">Символ, выбранный игроком.</param>
-    /// <param name="difficulty">Сложность игры.</param>
-    /// <returns>Новая игра.</returns>
-    public Game NewGame(CellState playerSymbol, int difficulty)
+    /// <summary>Применяет ход к игре и возвращает обновлённую игру.</summary>
+    /// <param name="game">Текущая игра.</param>
+    /// <param name="newField">Состояние поля после хода.</param>
+    /// <returns>Обновлённая игра.</returns>
+    private static Game ApplyMove(Game game, GameField newField)
     {
-        var game = new Game(playerSymbol, difficulty);
-        repository.Save(DatasourceMapper.GameToEntity(game));
-
-        if (game.ComputerSymbol == CellState.X) MakeComputerMove(game.Id);
-
-        return GetGame(game.Id)!;
+        var newState = GetGameState(game, newField);
+        var winnerId = newState == GameState.PlayerWon ? GetWinnerId(game, newField) : null;
+        var nextTurnPlayerId = newState == GameState.PlayerTurn ? GetOpponentId(game) : null;
+        return game.UpdateField(newField, newState, nextTurnPlayerId, winnerId);
     }
+
+    /// <summary>Делает ход компьютера.</summary>
+    /// <param name="game">Текущая игра.</param>
+    /// <returns>Игра с ходом компьютера.</returns>
+    private Game MakeComputerMove(Game game)
+    {
+        var bestMove = FindBestMove(game);
+        var computerSymbol = GetComputerSymbol(game);
+        var newField = game.Field.Clone();
+        newField.Cells[bestMove.Row][bestMove.Col] = computerSymbol;
+
+        return ApplyMove(game, newField);
+    }
+
+    /// <summary>Возвращает символ компьютера в игре.</summary>
+    /// <param name="game">Текущая игра.</param>
+    /// <returns>Символ компьютера (X или O).</returns>
+    private static CellState GetComputerSymbol(Game game) => game.PlayerXType == PlayerType.Computer ? CellState.X : CellState.O;
+
+    /// <summary>Возвращает UUID противника игрока.</summary>
+    /// <param name="game">Текущая игра.</param>
+    /// <returns>UUID противника (или null).</returns>
+    private static Guid? GetOpponentId(Game game) => game.PlayerXId == game.CurrentTurnPlayerId ? game.PlayerOId : game.PlayerXId;
+
+    /// <summary>Проверяет, что ход игрока корректен: ровно одна новая клетка, старые не изменены, клетка была пуста.</summary>
+    /// <param name="game">Текущая игра.</param>
+    /// <param name="playerField">Состояние поля после хода.</param>
+    /// <returns>true, если ход корректен.</returns>
+    private static bool ValidatePlayerMove(Game game, GameField playerField)
+    {
+        var originalField = game.Field;
+        var changes = 0;
+
+        for (int i = 0; i < GameField.Size; i++)
+        {
+            for (int j = 0; j < GameField.Size; j++)
+            {
+                var oldCell = originalField.Cells[i][j];
+                var newCell = playerField.Cells[i][j];
+                if (oldCell == newCell) continue;
+
+                if (oldCell != CellState.Empty || newCell == CellState.Empty) return false;
+                changes++;
+            }
+        }
+
+        return changes == 1;
+    }
+
+    /// <summary>Возвращает новое состояние игры после хода.</summary>
+    /// <param name="game">Текущая игра.</param>
+    /// <param name="newField">Состояние поля после хода.</param>
+    /// <returns>Новое состояние игры.</returns>
+    private static GameState GetGameState(Game game, GameField newField)
+    {
+        var winner = GetWinner(newField);
+        if (winner == CellState.X || winner == CellState.O) return GameState.PlayerWon;
+        if (IsBoardFull(newField)) return GameState.Draw;
+        return GameState.PlayerTurn;
+    }
+
+    /// <summary>Возвращает UUID победителя (если есть) или null.</summary>
+    /// <param name="game">Текущая игра.</param>
+    /// <param name="field">Состояние поля.</param>
+    /// <returns>UUID победителя или null.</returns>
+    private static Guid? GetWinnerId(Game game, GameField field)
+    {
+        var winner = GetWinner(field);
+        if (winner == CellState.X) return game.PlayerXId;
+        if (winner == CellState.O) return game.PlayerOId;
+        return null;
+    }
+
+    /// <summary>Проверяет, ходит лм сейчас компьютер.</summary>
+    /// <param name="game">Текущая игра.</param>
+    /// <returns>true, если ход компьютера.</returns>
+    private static bool IsComputerTurn(Game game) => game.State == GameState.PlayerTurn && game.CurrentTurnPlayerId == null;
 
     /// <summary>Возвращает победителя (X или O) или null, если победителя нет.</summary>
     /// <param name="field">Состояние игрового поля.</param>
@@ -155,14 +239,17 @@ internal class GameService : IGameService
     {
         var bestScore = -1;
         var bestMoves = new List<CellPosition>();
+        var computerSymbol = GetComputerSymbol(game);
+        var playerSymbol = computerSymbol == CellState.X ? CellState.O : CellState.X;
+
         for (int i = 0; i < GameField.Size; i++)
         {
             for (int j = 0; j < GameField.Size; j++)
             {
                 if (game.Field.Cells[i][j] != CellState.Empty) continue;
                 var testField = game.Field.Clone();
-                testField.Cells[i][j] = game.ComputerSymbol;
-                var score = Minimax(testField, 1, false, game);
+                testField.Cells[i][j] = computerSymbol;
+                var score = Minimax(testField, 1, false, game, computerSymbol, playerSymbol);
                 if (score > bestScore)
                 {
                     bestScore = score;
@@ -183,13 +270,15 @@ internal class GameService : IGameService
     /// <param name="depth">Текущая глубина рекурсии в полуходах.</param>
     /// <param name="isMaximizing">true — ход компьютера (максимизируем), false — ход игрока (минимизируем).</param>
     /// <param name="game">Текущая игра (для доступа к символам и сложности).</param>
+    /// <param name="computerSymbol">Символ компьютера.</param>
+    /// <param name="playerSymbol">Символ игрока.</param>
     /// <returns>Оценка позиции: 1 — победа компьютера, -1 — победа игрока, 0 — ничья.</returns>
-    private static int Minimax(GameField field, int depth, bool isMaximizing, Game game)
+    private static int Minimax(GameField field, int depth, bool isMaximizing, Game game, CellState computerSymbol, CellState playerSymbol)
     {
         if (depth > game.Difficulty) return 0;
         var winner = GetWinner(field);
-        if (winner == game.ComputerSymbol) return 1;
-        if (winner == game.PlayerSymbol) return -1;
+        if (winner == computerSymbol) return 1;
+        if (winner == playerSymbol) return -1;
         if (IsBoardFull(field)) return 0;
         if (isMaximizing)
         {
@@ -200,8 +289,8 @@ internal class GameService : IGameService
                 {
                     if (field.Cells[i][j] != CellState.Empty) continue;
                     var testField = field.Clone();
-                    testField.Cells[i][j] = game.ComputerSymbol;
-                    var score = Minimax(testField, depth + 1, false, game);
+                    testField.Cells[i][j] = computerSymbol;
+                    var score = Minimax(testField, depth + 1, false, game, computerSymbol, playerSymbol);
                     if (score > maxScore) maxScore = score;
                 }
             }
@@ -216,8 +305,8 @@ internal class GameService : IGameService
                 {
                     if (field.Cells[i][j] != CellState.Empty) continue;
                     var testField = field.Clone();
-                    testField.Cells[i][j] = game.PlayerSymbol;
-                    var score = Minimax(testField, depth + 1, true, game);
+                    testField.Cells[i][j] = playerSymbol;
+                    var score = Minimax(testField, depth + 1, true, game, computerSymbol, playerSymbol);
                     if (score < minScore) minScore = score;
                 }
             }

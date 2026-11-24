@@ -1,17 +1,17 @@
 namespace TicTacToe.Server.Datasource.Repository;
 
-using TicTacToe.Server.Datasource;
+using TicTacToe.Server.Datasource.Model;
 using TicTacToe.Server.Domain.Model;
 using TicTacToe.Server.Domain.Repository;
 
 /// <summary>Реализация репозитория пользователей через EF Core.</summary>
 internal class UserRepository : IUserRepository
 {
-    private readonly AppDbContext context;
+    private readonly GameDbContext context;
 
     /// <summary>Принимает контекст базы данных через конструктор.</summary>
     /// <param name="context">Контекст базы данных.</param>
-    public UserRepository(AppDbContext context)
+    public UserRepository(GameDbContext context)
     {
         this.context = context;
     }
@@ -20,7 +20,7 @@ internal class UserRepository : IUserRepository
     /// <param name="user">Доменная модель пользователя.</param>
     public void Add(User user)
     {
-        var entity = new Model.UserEntity
+        var entity = new UserEntity
         {
             Id = user.Id,
             Login = user.Login,
@@ -51,7 +51,7 @@ internal class UserRepository : IUserRepository
     /// <summary>Преобразует сущность базы данных в доменную модель.</summary>
     /// <param name="entity">Сущность пользователя.</param>
     /// <returns>Доменная модель пользователя.</returns>
-    private static User ToDomain(Model.UserEntity entity)
+    private static User ToDomain(UserEntity entity)
     {
         return new User
         {

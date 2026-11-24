@@ -3,12 +3,12 @@
 /// <summary>Состояние игры.</summary>
 public enum GameState
 {
-    /// <summary>Игра продолжается.</summary>
-    InProgress,
-    /// <summary>Победили крестики.</summary>
-    XWon,
-    /// <summary>Победили нолики.</summary>
-    OWon,
+    /// <summary>Ожидание второго игрока.</summary>
+    WaitingForPlayers,
+    /// <summary>Ход игрока (чей — в CurrentTurnPlayerId).</summary>
+    PlayerTurn,
     /// <summary>Ничья.</summary>
-    Draw
+    Draw,
+    /// <summary>Победа игрока (кто — в WinnerPlayerId).</summary>
+    PlayerWon
 }

@@ -35,19 +35,6 @@ internal static class WebMapper
         return new GameFieldDto { Cells = cells };
     }
 
-    /// <summary>Преобразует модель игры из веб-слоя в доменную.</summary>
-    /// <param name="dto">Модель игры от клиента.</param>
-    /// <returns>Доменная модель игры.</returns>
-    internal static Game GameToDomain(GameDto dto)
-    {
-        return new Game(dto.PlayerSymbol, dto.Difficulty)
-        {
-            Id = dto.Id,
-            Field = GameFieldToDomain(dto.Field),
-            State = dto.State
-        };
-    }
-
     /// <summary>Преобразует доменную модель игры в модель веб-слоя.</summary>
     /// <param name="domain">Доменная модель игры.</param>
     /// <returns>Модель игры для клиента.</returns>
@@ -56,11 +43,35 @@ internal static class WebMapper
         return new GameDto
         {
             Id = domain.Id,
+            CreatorId = domain.CreatorId,
             Field = GameFieldToDto(domain.Field),
-            PlayerSymbol = domain.PlayerSymbol,
-            ComputerSymbol = domain.ComputerSymbol,
+            PlayerXType = domain.PlayerXType,
+            PlayerXId = domain.PlayerXId,
+            PlayerOType = domain.PlayerOType,
+            PlayerOId = domain.PlayerOId,
             Difficulty = domain.Difficulty,
-            State = domain.State
+            State = domain.State,
+            CurrentTurnPlayerId = domain.CurrentTurnPlayerId,
+            WinnerPlayerId = domain.WinnerPlayerId,
+            CreatedAt = domain.CreatedAt,
+            LastMoveAt = domain.LastMoveAt,
+            MoveCount = domain.MoveCount
+        };
+    }
+
+    /// <summary>Преобразует доменную модель игры в модель доступной игры для списка.</summary>
+    /// <param name="domain">Доменная модель игры.</param>
+    /// <param name="creatorLogin">Логин создателя игры.</param>
+    /// <returns>Модель доступной игры.</returns>
+    internal static AvailableGameDto GameToAvailableDto(Game domain, string creatorLogin)
+    {
+        var creatorSymbol = domain.PlayerXId == domain.CreatorId ? CellState.X : CellState.O;
+        return new AvailableGameDto
+        {
+            Id = domain.Id,
+            CreatorLogin = creatorLogin,
+            CreatorSymbol = creatorSymbol,
+            CreatedAt = domain.CreatedAt
         };
     }
 

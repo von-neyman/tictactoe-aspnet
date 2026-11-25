@@ -1,9 +1,8 @@
 ﻿namespace TicTacToe.Server.Web.Controller;
 
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using TicTacToe.Server.Domain.Enum;
-using TicTacToe.Server.Domain.Model;
 using TicTacToe.Server.Domain.Service;
 using TicTacToe.Server.Web.Mapper;
 using TicTacToe.Server.Web.Model;
@@ -15,46 +14,72 @@ using TicTacToe.Server.Web.Model;
 public class GameController : ControllerBase
 {
     private readonly IGameService gameService;
+    private readonly IUserService userService;
 
-    /// <summary>Принимает сервис через конструктор.</summary>
-    public GameController(IGameService gameService)
+    /// <summary>Принимает сервисы через конструктор.</summary>
+    public GameController(IGameService gameService, IUserService userService)
     {
         this.gameService = gameService;
+        this.userService = userService;
     }
 
     /// <summary>Создаёт новую игру и возвращает её.</summary>
-    /// <param name="newGame">Параметры новой игры: символ игрока и сложность.</param>
+    /// <param name="request">Параметры новой игры: символ и (опционально) сложность.</param>
     [HttpPost("new")]
-    public IActionResult NewGame([FromBody] NewGameRequest newGame)
+    public IActionResult NewGame([FromBody] NewGameRequest request)
     {
-        var playerSymbol = newGame.PlayerSymbol == CellState.O ? CellState.O : CellState.X;
-        var difficulty = newGame.Difficulty is 0 or 1 or 2 ? newGame.Difficulty : GameField.Size * GameField.Size;
-
-        var game = gameService.NewGame(playerSymbol, difficulty);
-        var gameDto = WebMapper.GameToDto(game);
-        return Ok(gameDto);
+        var userId = GetUserId();
+        var game = gameService.NewGame(userId, request.PlayerSymbol, request.Difficulty);
+        return Ok(WebMapper.GameToDto(game));
     }
 
-    /// <summary>Обрабатывает ход игрока и возвращает обновлённую игру с ходом компьютера.</summary>
-    /// <param name="id">Идентификатор игры.</param>
-    /// <param name="dto">Модель игры с ходом игрока.</param>
-    /// <returns>Обновлённая игра или ошибка.</returns>
-    [HttpPost("{id}")]
-    public IActionResult MakeMove(Guid id, [FromBody] GameDto dto)
+    /// <summary>Присоединяет текущего пользователя к игре.</summary>
+    /// <param name="request">Идентификатор игры.</param>
+    [HttpPost("join")]
+    public IActionResult JoinGame([FromBody] JoinGameRequest request)
     {
-        var game = gameService.GetGame(id);
-        if (game == null) return NotFound();
+        var userId = GetUserId();
+        var success = gameService.JoinGame(request.GameId, userId);
+        if (!success) return BadRequest(new ErrorResponse { Message = "Не удалось присоединиться к игре." });
+        return Ok();
+    }
 
-        var playerGame = WebMapper.GameToDomain(dto);
-        var isValid = gameService.ValidatePlayerMove(id, playerGame.Field);
-        if (!isValid) return BadRequest(new ErrorResponse { Message = "Некорректный ход. Попробуйте снова." });
+    /// <summary>Возвращает список доступных игр (ожидание игроков).</summary>
+    [HttpGet("available")]
+    public IActionResult GetAvailableGames()
+    {
+        var userId = GetUserId();
+        var games = gameService.GetAvailableGames(userId);
+        var dtos = new List<AvailableGameDto>();
+        foreach (var game in games)
+        {
+            var creator = userService.GetById(game.CreatorId);
+            var login = creator?.Login ?? "Unknown";
+            dtos.Add(WebMapper.GameToAvailableDto(game, login));
+        }
+        return Ok(dtos);
+    }
 
-        var updatedGame = gameService.GetGame(id)!;
-        if (updatedGame.State == GameState.InProgress) gameService.MakeComputerMove(id);
+    /// <summary>Возвращает список незавершённых игр текущего пользователя.</summary>
+    [HttpGet("my")]
+    public IActionResult GetUserGames()
+    {
+        var userId = GetUserId();
+        var games = gameService.GetUserGames(userId);
+        return Ok(games.Select(WebMapper.GameToDto).ToList());
+    }
 
-        var resultGame = gameService.GetGame(id)!;
-        var resultGameDto = WebMapper.GameToDto(resultGame);
-        return Ok(resultGameDto);
+    /// <summary>Делает ход игрока и (если нужно) ход компьютера.</summary>
+    /// <param name="id">Идентификатор игры.</param>
+    /// <param name="field">Состояние поля после хода.</param>
+    [HttpPost("{id}/move")]
+    public IActionResult MakeMove(Guid id, [FromBody] GameFieldDto field)
+    {
+        var userId = GetUserId();
+        var playerField = WebMapper.GameFieldToDomain(field);
+        var success = gameService.MakeMove(id, userId, playerField);
+        if (!success) return BadRequest(new ErrorResponse { Message = "Некорректный ход." });
+        return Ok();
     }
 
     /// <summary>Возвращает актуальное состояние игры.</summary>
@@ -64,8 +89,13 @@ public class GameController : ControllerBase
     {
         var game = gameService.GetGame(id);
         if (game == null) return NotFound();
+        return Ok(WebMapper.GameToDto(game));
+    }
 
-        var gameDto = WebMapper.GameToDto(game);
-        return Ok(gameDto);
+    /// <summary>Возвращает UUID текущего пользователя из ClaimsPrincipal.</summary>
+    private Guid GetUserId()
+    {
+        var claim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        return Guid.Parse(claim!);
     }
 }

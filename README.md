@@ -2,7 +2,7 @@
 
 [![CI/CD](https://github.com/von-neyman/tictactoe-aspnet/actions/workflows/tictactoe-aspnet.yml/badge.svg)](https://github.com/von-neyman/tictactoe-aspnet/actions/workflows/tictactoe-aspnet.yml)
 
-Игра «Крестики-Нолики» с компьютером. Сервер на ASP.NET Core Web API, клиент на Blazor WebAssembly. Проект создан в учебных целях в рамках обучения в Школе 21.
+Игра «Крестики-Нолики» с компьютером и другими игроками. Сервер на ASP.NET Core Web API, клиент на Blazor WebAssembly. Пользователи регистрируются, входят в систему и играют друг с другом или с компьютером. Проект создан в учебных целях в рамках обучения в Школе 21.
 
 ![Игровой процесс](screenshots/game.png)
 
@@ -10,8 +10,9 @@
 
 ```bash
 git clone https://github.com/von-neyman/tictactoe-aspnet.git
-cd tictactoe-aspnet
 ```
+
+> **Важно:** перед запуском сервера убедись, что PostgreSQL установлен и база данных `tictactoe` создана. [Инструкция](docs/database-setup.md).
 
 ### Visual Studio
 
@@ -69,6 +70,7 @@ Now listening on: http://localhost:5122   ← клиент
 |-----------|------------|
 | .NET SDK | Версия 8.0 или выше |
 | Браузер | Любой современный (Chrome, Firefox, Edge) |
+| PostgreSQL | 12.0 или выше (проверено на 18.6) |
 
 ![Меню новой игры](screenshots/menu.png)
 
@@ -216,12 +218,21 @@ docker network rm tictactoe-net
 
 ## Как играть
 
+### Игра с компьютером
+
 - Выбрать символ (крестики или нолики) и сложность
 - Если выбраны нолики — компьютер ходит первым
 - Кликать по пустой клетке, чтобы сделать ход
 - Компьютер отвечает автоматически
 - Игра заканчивается победой, поражением или ничьей
 - Счётчик вверху считает результаты за сессию
+
+### Игра с другим человеком
+
+- Создать игру: выбрать символ, дождаться второго игрока
+- Или присоединиться к существующей игре из списка доступных
+- Ходы передаются по очереди
+- Незавершённые игры сохраняются и доступны в разделе «Мои игры»
 
 ## Сложность
 
@@ -244,10 +255,10 @@ docker network rm tictactoe-net
 
 | Слой | Назначение |
 |------|------------|
-| Domain | Бизнес-логика: модели Game и GameField, интерфейс IGameService |
-| Datasource | Хранение игр в памяти (ConcurrentDictionary), репозиторий, мапперы, реализация GameService с Минимаксом |
-| Web | REST API контроллер, DTO для обмена с клиентом, мапперы |
-| DI | Конфигурация зависимостей (GameStorage как singleton и т.д.) |
+| Domain | Бизнес-логика: модели Game, GameField, User, SignUpRequest; интерфейсы IGameService, IUserService, IAuthService |
+| Datasource | Хранение игр и пользователей в PostgreSQL через EF Core, репозитории, мапперы, реализация сервисов |
+| Web | REST API контроллеры (Game, Auth, User), DTO для обмена с клиентом, мапперы, UserAuthenticator |
+| DI | Конфигурация зависимостей (GameDbContext, Scoped-сервисы) |
 
 Клиент — отдельный проект `TicTacToe.Client` на Blazor WebAssembly. Общается с сервером через HTTP, дублирует DTO-модели (ограничение ТЗ).
 
@@ -257,10 +268,12 @@ docker network rm tictactoe-net
 - ASP.NET Core Web API
 - Blazor WebAssembly
 - Алгоритм Минимакс
-- ConcurrentDictionary
+- PostgreSQL
+- Entity Framework Core
 - Dependency Injection
 - CORS
 - Swagger
+- User Secrets
 - Docker, Docker Compose
 - CI/CD
 
@@ -269,3 +282,4 @@ docker network rm tictactoe-net
 Подробные инструкции по настройке и запуску:
 
 - [Настройка базы данных PostgreSQL](docs/database-setup.md)
+- [Описание API](docs/api.md)

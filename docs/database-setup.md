@@ -56,7 +56,7 @@ User Secrets работают только в среде Development. В Docker 
 
 - Берётся `ConnectionStrings:DefaultConnection` из конфигурации.
 - Если в конфигурации есть `DbPassword` (из User Secrets), он добавляется через `NpgsqlConnectionStringBuilder`.
-- Зарегистрированный `AppDbContext` использует `UseNpgsql(connectionString)`.
+- Зарегистрированный `GameDbContext` использует `UseNpgsql(connectionString)`.
 
 Это позволяет держать пароль вне Git и при этом использовать одну и ту же строку подключения в разных средах.
 
@@ -82,7 +82,7 @@ dotnet ef migrations add InitialCreate --project TicTacToe.Server
 dotnet ef database update --project TicTacToe.Server
 ```
 
-После применения в базе `tictactoe` появятся таблицы `Users` и `__EFMigrationsHistory`.
+После применения в базе `tictactoe` появятся таблицы `Users`, `Games` и `__EFMigrationsHistory`.
 
 ```bash
 psql -h localhost -p 5432 -U postgres -d tictactoe
@@ -91,6 +91,7 @@ psql -h localhost -p 5432 -U postgres -d tictactoe
 ```sql
 \dt
 \d "Users"
+\d "Games"
 ```
 
 ## Docker

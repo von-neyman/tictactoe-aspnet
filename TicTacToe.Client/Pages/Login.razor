@@ -1,0 +1,84 @@
+﻿@page "/login"
+@using TicTacToe.Client.Service
+@inject AuthClient authClient
+@inject AuthService authService
+@inject NavigationManager navigation
+
+<div class="page">
+    <h1 class="title">Крестики-Нолики</h1>
+    <div class="auth-form">
+        <div class="setup-label">Логин</div>
+        <input type="text" @bind="login" class="auth-input" placeholder="Введите логин" />
+
+        <div class="setup-label">Пароль</div>
+        <input type="password" @bind="password" class="auth-input" placeholder="Введите пароль" />
+
+        <div class="error-message">@errorMessage</div>
+
+        <div class="auth-buttons">
+            <button class="btn-start" @onclick="LoginAsync" disabled="@isLoading">Войти</button>
+            <button class="btn-start" @onclick="SignUpAsync" disabled="@isLoading">Зарегистрироваться</button>
+        </div>
+    </div>
+</div>
+
+@code {
+    private string login = "";
+    private string password = "";
+    private string errorMessage = "";
+    private bool isLoading;
+
+    private async Task LoginAsync()
+    {
+        if (string.IsNullOrWhiteSpace(login) || string.IsNullOrWhiteSpace(password))
+        {
+            errorMessage = "Введите логин и пароль.";
+            return;
+        }
+
+        isLoading = true;
+        errorMessage = "";
+
+        var userId = await authClient.LoginAsync(login, password);
+        if (userId == null)
+        {
+            errorMessage = "Неверный логин или пароль.";
+            isLoading = false;
+            return;
+        }
+
+        authService.SetCredentials(login, password, userId.Value);
+        navigation.NavigateTo("/");
+    }
+
+    private async Task SignUpAsync()
+    {
+        if (string.IsNullOrWhiteSpace(login) || string.IsNullOrWhiteSpace(password))
+        {
+            errorMessage = "Введите логин и пароль.";
+            return;
+        }
+
+        isLoading = true;
+        errorMessage = "";
+
+        var success = await authClient.SignUpAsync(login, password);
+        if (!success)
+        {
+            errorMessage = "Не удалось зарегистрироваться. Возможно, логин уже занят.";
+            isLoading = false;
+            return;
+        }
+
+        var userId = await authClient.LoginAsync(login, password);
+        if (userId == null)
+        {
+            errorMessage = "Регистрация прошла, но войти не удалось.";
+            isLoading = false;
+            return;
+        }
+
+        authService.SetCredentials(login, password, userId.Value);
+        navigation.NavigateTo("/");
+    }
+}

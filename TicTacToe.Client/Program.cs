@@ -13,10 +13,9 @@ public class Program
         builder.RootComponents.Add<HeadOutlet>("head::after");
 
         var serverUrl = builder.Configuration["ServerUrl"] ?? builder.HostEnvironment.BaseAddress;
-        builder.Services.AddHttpClient<GameClient>(client =>
-        {
-            client.BaseAddress = new Uri(serverUrl);
-        });
+        builder.Services.AddScoped<AuthService>();
+        builder.Services.AddHttpClient<GameClient>(client => client.BaseAddress = new Uri(serverUrl));
+        builder.Services.AddHttpClient<AuthClient>(client => client.BaseAddress = new Uri(serverUrl));
 
         await builder.Build().RunAsync();
     }

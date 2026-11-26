@@ -8,6 +8,6 @@ public class NewGameRequest
     /// <summary>Символ, выбранный игроком (X или O).</summary>
     public CellState PlayerSymbol { get; set; }
 
-    /// <summary>Сложность игры (0, 1, 2, 9).</summary>
-    public int Difficulty { get; set; }
+    /// <summary>Сложность игры (null — игра с человеком, иначе — с компьютером).</summary>
+    public int? Difficulty { get; set; }
 }

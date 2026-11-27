@@ -1,0 +1,70 @@
+﻿@page "/game/join"
+@using TicTacToe.Client.Service
+@using TicTacToe.Client.Model
+@using TicTacToe.Client.Enum
+@using TicTacToe.Client.Components
+@inject GameClient gameClient
+@inject AuthService authService
+@inject ScoreService scoreService
+@inject NavigationManager navigation
+
+<div class="page">
+    <ScoreBoard />
+    <h1 class="title">Доступные игры</h1>
+    @if (games == null)
+    {
+        <div class="setup-label">Загрузка...</div>
+    }
+    else if (games.Count == 0)
+    {
+        <div class="setup-label">Нет доступных игр. Создайте свою!</div>
+    }
+    else
+    {
+        <div class="games-list">
+            @foreach (var game in games)
+            {
+                <div class="game-item" @onclick="() => JoinGame(game.Id)">
+                    <span>@game.CreatorLogin</span>
+                    <span>@GetSymbol(game.CreatorSymbol)</span>
+                    <span class="game-date">@game.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</span>
+                </div>
+            }
+        </div>
+    }
+    <button class="btn-start" @onclick="BackToMenu">Вернуться</button>
+</div>
+
+@code {
+    private List<AvailableGameDto>? games;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!authService.IsAuthenticated)
+        {
+            navigation.NavigateTo("/login");
+            return;
+        }
+        games = await gameClient.GetAvailableGamesAsync();
+    }
+
+    private async Task JoinGame(Guid gameId)
+    {
+        var success = await gameClient.JoinGameAsync(gameId);
+        if (!success) return;
+
+        var game = await gameClient.GetGameAsync(gameId);
+        if (game == null) return;
+
+        navigation.NavigateTo($"/game/{game.Id}");
+    }
+
+    private void BackToMenu() => navigation.NavigateTo("/");
+
+    private string GetSymbol(CellState state) => state switch
+    {
+        CellState.X => "✕",
+        CellState.O => "◯",
+        _ => ""
+    };
+}

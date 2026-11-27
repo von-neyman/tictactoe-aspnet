@@ -20,11 +20,17 @@ public class GameDto
     /// <summary>UUID игрока в слоте X.</summary>
     public Guid? PlayerXId { get; set; }
 
+    /// <summary>Логин игрока в слоте X (null для компьютера или пустого слота).</summary>
+    public string? PlayerXLogin { get; set; }
+
     /// <summary>Тип игрока в слоте O.</summary>
     public PlayerType PlayerOType { get; set; }
 
     /// <summary>UUID игрока в слоте O.</summary>
     public Guid? PlayerOId { get; set; }
+
+    /// <summary>Логин игрока в слоте O (null для компьютера или пустого слота).</summary>
+    public string? PlayerOLogin { get; set; }
 
     /// <summary>Сложность игры с компьютером (null — игра с человеком).</summary>
     public int? Difficulty { get; set; }

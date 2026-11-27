@@ -14,6 +14,7 @@ public class Program
 
         var serverUrl = builder.Configuration["ServerUrl"] ?? builder.HostEnvironment.BaseAddress;
         builder.Services.AddScoped<AuthService>();
+        builder.Services.AddScoped<ScoreService>();
         builder.Services.AddHttpClient<GameClient>(client => client.BaseAddress = new Uri(serverUrl));
         builder.Services.AddHttpClient<AuthClient>(client => client.BaseAddress = new Uri(serverUrl));
 

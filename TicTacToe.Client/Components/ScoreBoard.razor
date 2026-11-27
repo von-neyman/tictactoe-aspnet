@@ -1,11 +1,8 @@
-﻿<div class="scoreboard">
-    <span>Победы: @wins</span>
-    <span>Поражения: @losses</span>
-    <span>Ничьи: @draws</span>
-</div>
+﻿@using TicTacToe.Client.Service
+@inject ScoreService scoreService
 
-@code {
-    [Parameter] public int wins { get; set; }
-    [Parameter] public int losses { get; set; }
-    [Parameter] public int draws { get; set; }
-}
+<div class="scoreboard">
+    <span>Победы: @scoreService.Wins</span>
+    <span>Поражения: @scoreService.Losses</span>
+    <span>Ничьи: @scoreService.Draws</span>
+</div>

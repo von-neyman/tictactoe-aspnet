@@ -162,6 +162,7 @@ internal class GameService : IGameService
     /// <returns>Новое состояние игры.</returns>
     private static GameState GetGameState(Game game, GameField newField)
     {
+        if (game.State == GameState.WaitingForPlayers) return GameState.WaitingForPlayers;
         var winner = GetWinner(newField);
         if (winner == CellState.X || winner == CellState.O) return GameState.PlayerWon;
         if (IsBoardFull(newField)) return GameState.Draw;

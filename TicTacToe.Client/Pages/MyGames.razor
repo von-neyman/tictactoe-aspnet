@@ -1,0 +1,97 @@
+﻿@page "/game/my"
+@using TicTacToe.Client.Service
+@using TicTacToe.Client.Model
+@using TicTacToe.Client.Enum
+@using TicTacToe.Client.Components
+@inject GameClient gameClient
+@inject AuthService authService
+@inject ScoreService scoreService
+@inject NavigationManager navigation
+
+<div class="page">
+    <ScoreBoard />
+    <h1 class="title">Мои игры</h1>
+    @if (games == null)
+    {
+        <div class="setup-label">Загрузка...</div>
+    }
+    else if (games.Count == 0)
+    {
+        <div class="setup-label">Нет незавершённых игр.</div>
+    }
+    else
+    {
+        <div class="games-list">
+            @foreach (var game in games)
+            {
+                <div class="game-item" @onclick="() => OpenGame(game.Id)">
+                    <span>@GetMyPart(game)</span>
+                    <span>@GetOpponentPart(game)</span>
+                    <span>Ходов сделано: @game.MoveCount</span>
+                    <span>@GetTurnInfo(game)</span>
+                    <span class="game-date">@game.LastMoveAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</span>
+                </div>
+            }
+        </div>
+    }
+    <button class="btn-start" @onclick="BackToMenu">Вернуться</button>
+</div>
+
+@code {
+    private List<GameDto>? games;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!authService.IsAuthenticated)
+        {
+            navigation.NavigateTo("/login");
+            return;
+        }
+        games = await gameClient.GetUserGamesAsync();
+    }
+
+    private void OpenGame(Guid gameId) => navigation.NavigateTo($"/game/{gameId}");
+
+    private void BackToMenu() => navigation.NavigateTo("/");
+
+    private string GetMyPart(GameDto game)
+    {
+        var mySymbol = game.PlayerXId == authService.UserId ? CellState.X : CellState.O;
+        return $"Вы: {authService.Login} {GetSymbol(mySymbol)}";
+    }
+
+    private string GetOpponentPart(GameDto game)
+    {
+        var mySymbol = game.PlayerXId == authService.UserId ? CellState.X : CellState.O;
+        var opponentSymbol = mySymbol == CellState.X ? CellState.O : CellState.X;
+        var opponentName = GetPlayerName(game, opponentSymbol);
+        return $"Противник: {opponentName} {GetSymbol(opponentSymbol)}";
+    }
+
+    private string GetTurnInfo(GameDto game)
+    {
+        if (game.CurrentTurnPlayerId == null) return "Ожидание игрока";
+        if (game.CurrentTurnPlayerId == authService.UserId) return "Ваш ход";
+        var turnSymbol = game.CurrentTurnPlayerId == game.PlayerXId ? CellState.X : CellState.O;
+        return $"Ход {GetPlayerName(game, turnSymbol)}";
+    }
+
+    private string GetPlayerName(GameDto game, CellState slot)
+    {
+        var type = slot == CellState.X ? game.PlayerXType : game.PlayerOType;
+        var login = slot == CellState.X ? game.PlayerXLogin : game.PlayerOLogin;
+        return type switch
+        {
+            PlayerType.Human => login ?? "Игрок",
+            PlayerType.Computer => "Вертер",
+            _ => "—"
+        };
+    }
+
+    private string GetSymbol(CellState state) => state switch
+    {
+        CellState.X => "✕",
+        CellState.O => "◯",
+        _ => ""
+    };
+}

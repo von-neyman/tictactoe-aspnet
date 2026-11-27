@@ -2,6 +2,7 @@
 
 using TicTacToe.Server.Domain.Enum;
 using TicTacToe.Server.Domain.Model;
+using TicTacToe.Server.Domain.Service;
 using TicTacToe.Server.Web.Model;
 
 /// <summary>Преобразование моделей между слоями Web и Domain.</summary>
@@ -28,7 +29,6 @@ internal static class WebMapper
         for (int i = 0; i < GameField.Size; i++)
         {
             cells[i] = new CellState[GameField.Size];
-
             for (int j = 0; j < GameField.Size; j++)
                 cells[i][j] = domain.Cells[i][j];
         }
@@ -37,8 +37,9 @@ internal static class WebMapper
 
     /// <summary>Преобразует доменную модель игры в модель веб-слоя.</summary>
     /// <param name="domain">Доменная модель игры.</param>
+    /// <param name="userService">Сервис для работы с пользователями.</param>
     /// <returns>Модель игры для клиента.</returns>
-    internal static GameDto GameToDto(Game domain)
+    internal static GameDto GameToDto(Game domain, IUserService userService)
     {
         return new GameDto
         {
@@ -47,8 +48,10 @@ internal static class WebMapper
             Field = GameFieldToDto(domain.Field),
             PlayerXType = domain.PlayerXType,
             PlayerXId = domain.PlayerXId,
+            PlayerXLogin = domain.PlayerXId != null ? userService.GetById(domain.PlayerXId.Value)?.Login : null,
             PlayerOType = domain.PlayerOType,
             PlayerOId = domain.PlayerOId,
+            PlayerOLogin = domain.PlayerOId != null ? userService.GetById(domain.PlayerOId.Value)?.Login : null,
             Difficulty = domain.Difficulty,
             State = domain.State,
             CurrentTurnPlayerId = domain.CurrentTurnPlayerId,

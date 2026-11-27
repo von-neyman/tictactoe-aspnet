@@ -30,7 +30,7 @@ public class GameController : ControllerBase
     {
         var userId = GetUserId();
         var game = gameService.NewGame(userId, request.PlayerSymbol, request.Difficulty);
-        return Ok(WebMapper.GameToDto(game));
+        return Ok(WebMapper.GameToDto(game, userService));
     }
 
     /// <summary>Присоединяет текущего пользователя к игре.</summary>
@@ -66,7 +66,7 @@ public class GameController : ControllerBase
     {
         var userId = GetUserId();
         var games = gameService.GetUserGames(userId);
-        return Ok(games.Select(WebMapper.GameToDto).ToList());
+        return Ok(games.Select(g => WebMapper.GameToDto(g, userService)).ToList());
     }
 
     /// <summary>Делает ход игрока и (если нужно) ход компьютера.</summary>
@@ -89,7 +89,7 @@ public class GameController : ControllerBase
     {
         var game = gameService.GetGame(id);
         if (game == null) return NotFound();
-        return Ok(WebMapper.GameToDto(game));
+        return Ok(WebMapper.GameToDto(game, userService));
     }
 
     /// <summary>Возвращает UUID текущего пользователя из ClaimsPrincipal.</summary>

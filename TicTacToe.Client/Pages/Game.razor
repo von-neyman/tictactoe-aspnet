@@ -1,0 +1,184 @@
+﻿@page "/game/{GameId:guid}"
+@using TicTacToe.Client.Service
+@using TicTacToe.Client.Model
+@using TicTacToe.Client.Enum
+@using TicTacToe.Client.Components
+@inject GameClient gameClient
+@inject AuthService authService
+@inject ScoreService scoreService
+@inject NavigationManager navigation
+@implements IDisposable
+
+<div class="page">
+    <ScoreBoard />
+    <h1 class="title">Крестики-Нолики</h1>
+    @if (game == null)
+    {
+        <div class="setup-label">Загрузка...</div>
+    }
+    else
+    {
+        <div class="result @resultColor">@(string.IsNullOrEmpty(resultMessage) ? "\u00A0" : resultMessage)</div>
+        <div class="game-layout">
+            <div class="player-info left">
+                <div class="player-label">Вы</div>
+                <div class="player-name">@GetPlayerName(mySymbol)</div>
+            </div>
+            <Board game="@game" isGameOver="@isGameOver" OnCellClick="HandleCellClick" />
+            <div class="player-info right">
+                <div class="player-label">Противник</div>
+                <div class="player-name">@GetPlayerName(opponentSymbol)</div>
+            </div>
+        </div>
+        <button class="btn-start" @onclick="BackToMenu">Выйти</button>
+    }
+</div>
+
+@code {
+    [Parameter] public Guid GameId { get; set; }
+
+    private GameDto? game;
+    private bool isGameOver;
+    private string resultMessage = "";
+    private string resultColor = "";
+    private CellState mySymbol;
+    private CellState opponentSymbol;
+    private System.Threading.Timer? pollTimer;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!authService.IsAuthenticated)
+        {
+            navigation.NavigateTo("/login");
+            return;
+        }
+
+        game = await gameClient.GetGameAsync(GameId);
+        if (game == null || !IsParticipant(game))
+        {
+            navigation.NavigateTo("/");
+            return;
+        }
+
+        UpdateSymbols();
+        UpdateResult();
+
+        if (game.PlayerOType != PlayerType.Computer && game.PlayerXType != PlayerType.Computer)
+        {
+            pollTimer = new System.Threading.Timer(async _ => await PollAsync(), null, 1000, 1000);
+        }
+    }
+
+    private bool IsParticipant(GameDto g) => g.PlayerXId == authService.UserId || g.PlayerOId == authService.UserId;
+
+    private void UpdateSymbols()
+    {
+        if (game == null) return;
+        mySymbol = game.PlayerXId == authService.UserId ? CellState.X : CellState.O;
+        opponentSymbol = mySymbol == CellState.X ? CellState.O : CellState.X;
+    }
+
+    private async Task PollAsync()
+    {
+        var updated = await gameClient.GetGameAsync(GameId);
+        if (updated == null) return;
+
+        await InvokeAsync(() =>
+        {
+            game = updated;
+            isGameOver = game.State == GameState.PlayerWon || game.State == GameState.Draw;
+            UpdateResult();
+            if (isGameOver) pollTimer?.Dispose();
+            StateHasChanged();
+        });
+    }
+
+    private void UpdateResult()
+    {
+        if (game == null) return;
+
+        if (game.State == GameState.PlayerWon || game.State == GameState.Draw)
+        {
+            isGameOver = true;
+            resultMessage = game.State switch
+            {
+                GameState.PlayerWon => game.WinnerPlayerId == authService.UserId ? "Победа!" : "Поражение!",
+                GameState.Draw => "Ничья!",
+                _ => ""
+            };
+            resultColor = game.State switch
+            {
+                GameState.PlayerWon => resultMessage == "Победа!" ? "win" : "lose",
+                GameState.Draw => "draw",
+                _ => ""
+            };
+
+            if (resultMessage == "Победа!") scoreService.AddWin();
+            else if (resultMessage == "Поражение!") scoreService.AddLoss();
+            else if (resultMessage == "Ничья!") scoreService.AddDraw();
+
+            return;
+        }
+
+        if (game.State == GameState.WaitingForPlayers)
+        {
+            resultMessage = game.CurrentTurnPlayerId == authService.UserId
+                ? "Сейчас ваш ход"
+                : "Сейчас ходит ещё не присоединившийся игрок";
+        }
+        else if (game.State == GameState.PlayerTurn)
+        {
+            resultMessage = game.CurrentTurnPlayerId == authService.UserId
+                ? "Сейчас ваш ход"
+                : $"Сейчас ходит {GetPlayerName(opponentSymbol)}";
+        }
+
+        resultColor = "";
+    }
+
+    private async Task HandleCellClick((int row, int col) move)
+    {
+        if (game == null || isGameOver) return;
+        if (game.Field.Cells[move.row][move.col] != CellState.Empty) return;
+        if (game.CurrentTurnPlayerId != authService.UserId) return;
+
+        game.Field.Cells[move.row][move.col] = mySymbol;
+        var success = await gameClient.MakeMoveAsync(game.Id, game.Field);
+        if (!success) return;
+
+        game = await gameClient.GetGameAsync(game.Id);
+        if (game == null) return;
+
+        UpdateResult();
+        if (game.State != GameState.PlayerTurn && game.State != GameState.WaitingForPlayers)
+        {
+            isGameOver = true;
+            pollTimer?.Dispose();
+        }
+    }
+
+    private string GetPlayerName(CellState slot)
+    {
+        if (game == null) return "";
+        var type = slot == CellState.X ? game.PlayerXType : game.PlayerOType;
+        var login = slot == CellState.X ? game.PlayerXLogin : game.PlayerOLogin;
+
+        return type switch
+        {
+            PlayerType.Human => login ?? "Игрок",
+            PlayerType.Computer => "Вертер",
+            _ => "—"
+        };
+    }
+
+    private void BackToMenu()
+    {
+        pollTimer?.Dispose();
+        navigation.NavigateTo("/");
+    }
+
+    public void Dispose()
+    {
+        pollTimer?.Dispose();
+    }
+}
